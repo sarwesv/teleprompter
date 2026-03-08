@@ -140,6 +140,39 @@ h1 {
     color: rgba(148, 163, 184, 0.4);
 }
 
+.dictation-indicator {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    color: var(--danger-color);
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: none; /* toggled via JS */
+    align-items: center;
+    gap: 8px;
+    z-index: 10;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 6px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.blinking-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 16px;
+    background-color: var(--danger-color);
+    box-shadow: 0 0 10px var(--danger-color);
+    animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
 /* --- PLAY MODE --- */
 #play-view {
     background: #000;

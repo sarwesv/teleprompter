@@ -228,6 +228,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             dictationRecognition.start();
             isDictating = true;
+            
+            const indicator = document.getElementById('dictation-indicator');
+            if (indicator) indicator.style.display = 'flex';
+
             if (buttons.dictateBtn) {
                 buttons.dictateBtn.classList.add('active-toggle');
                 buttons.dictateBtn.style.background = '#ef4444'; // Red color to indicate recording
@@ -248,6 +252,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopDictation() {
         isDictating = false;
         dictationRecognition.stop();
+        
+        const indicator = document.getElementById('dictation-indicator');
+        if (indicator) indicator.style.display = 'none';
+
         if (buttons.dictateBtn) {
             buttons.dictateBtn.classList.remove('active-toggle');
             buttons.dictateBtn.style.background = '';
