@@ -975,10 +975,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 scrollPosition = targetScrollPosition;
             }
 
-            // Boundary checks
+            // Boundary checks — reached end of script
             const maxScroll = display.wrapper.scrollHeight - display.container.clientHeight;
-            if (targetScrollPosition > maxScroll + 100) { // Buffer for smooth end
+            if (targetScrollPosition > maxScroll + 100) {
                 stopScrolling();
+                showEndModal();
                 return;
             }
 
@@ -1064,6 +1065,34 @@ document.addEventListener('DOMContentLoaded', () => {
             recognition.stop();
         }
     }
+
+    // --- END OF SCRIPT MODAL ---
+    const endModal = document.getElementById('end-modal-overlay');
+
+    function showEndModal() {
+        if (endModal) {
+            endModal.style.display = 'flex';
+            // Small animation delay
+            requestAnimationFrame(() => endModal.classList.add('visible'));
+        }
+    }
+
+    function hideEndModal() {
+        if (endModal) {
+            endModal.classList.remove('visible');
+            setTimeout(() => { endModal.style.display = 'none'; }, 300);
+        }
+    }
+
+    document.getElementById('end-modal-yes')?.addEventListener('click', () => {
+        hideEndModal();
+        stopScrolling();
+        switchView('edit');
+    });
+
+    document.getElementById('end-modal-no')?.addEventListener('click', () => {
+        hideEndModal();
+    });
 
     // Keyboard support
     document.addEventListener('keydown', (e) => {
