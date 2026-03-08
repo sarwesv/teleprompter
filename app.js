@@ -14,11 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const buttons = {
         startEdit: document.getElementById('start-prompter-btn'),
         clearEdit: document.getElementById('new-prompter-btn-edit'),
+        saveBtn: document.getElementById('save-btn'),
+        loadBtn: document.getElementById('load-btn'),
         playPause: document.getElementById('play-pause-btn'),
         edit: document.getElementById('edit-btn'),
         mirror: document.getElementById('mirror-btn'),
         voice: document.getElementById('voice-btn')
     };
+    
+    const fileInput = document.getElementById('load-file-input');
 
     const display = {
         container: document.getElementById('prompter-display-container'),
@@ -186,6 +190,44 @@ document.addEventListener('DOMContentLoaded', () => {
             inputs.script.value = '';
             localStorage.removeItem('teleprompter_script');
         }
+    });
+
+    buttons.saveBtn.addEventListener('click', () => {
+        const scriptContent = inputs.script.value.trim();
+        if (!scriptContent) {
+            alert('Cannot save an empty script.');
+            return;
+        }
+
+        const blob = new Blob([scriptContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'teleprompter_script.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    buttons.loadBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            inputs.script.value = event.target.result;
+            // Optionally, we could auto-save to local storage here as well
+            localStorage.setItem('teleprompter_script', event.target.result);
+        };
+        reader.readAsText(file);
+        
+        // Reset the input so the same file can be loaded again if needed
+        e.target.value = '';
     });
 
     // --- Event Listeners (Play View) ---
