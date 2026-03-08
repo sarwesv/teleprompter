@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputs = {
         script: document.getElementById('script-input'),
         speed: document.getElementById('speed-slider'),
-        size: document.getElementById('size-slider')
+        size: document.getElementById('size-slider'),
+        scrubber: document.getElementById('script-scrubber')
     };
 
     const buttons = {
@@ -575,6 +576,10 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStats();
     });
 
+    if (inputs.scrubber) {
+        inputs.scrubber.addEventListener('input', handleScrub);
+    }
+
     const updatePlayPauseIcons = () => {
         if (isPlaying) {
             display.iconPlay.style.display = 'none';
@@ -614,6 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 updateScrollTransform();
                 updateStats();
+                updateScrubber();
             } else {
                 const speedValue = parseInt(inputs.speed.value, 10);
                 const pxPerSecond = (speedValue / 100) * 400 + 10;
@@ -629,11 +635,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 updateScrollTransform();
                 // Update stats every 10 pixels to balance accuracy and performance
-                if (Math.round(scrollPosition) % 10 === 0) updateStats();
+                if (Math.round(scrollPosition) % 10 === 0) {
+                    updateStats();
+                    updateScrubber();
+                }
             }
         }
 
         animationFrameId = requestAnimationFrame(scrollLoop);
+    }
+
+    function updateScrubber() {
+        if (!inputs.scrubber) return;
+        const wrapperHeight = display.wrapper.scrollHeight - display.container.clientHeight;
+        if (wrapperHeight > 0) {
+            const progress = (scrollPosition / wrapperHeight) * 100;
+            inputs.scrubber.value = progress;
+        }
+    }
+
+    function handleScrub(e) {
+        const progress = parseFloat(e.target.value);
+        const wrapperHeight = display.wrapper.scrollHeight - display.container.clientHeight;
+        scrollPosition = (progress / 100) * wrapperHeight;
+        targetScrollPosition = scrollPosition;
+        updateScrollTransform();
+        
+        // Find current word index based on scroll position
+        const eyeLineOffset = display.container.clientHeight * 0.35;
+        const currentTargetY = scrollPosition + eyeLineOffset;
+        
+        let bestWordIdx = 0;
+        let minDiff = Infinity;
+        
+        uiWords.forEach((word, idx) => {
+            const diff = Math.abs(word.offsetTop - currentTargetY);
+            if (diff < minDiff) {
+                minDiff = diff;
+                bestWordIdx = idx;
+            }
+        });
+        
+        currentWordIndex = bestWordIdx;
+
+        // Update Highlighting
+        uiWords.forEach((wordElement, idx) => {
+            if (idx < currentWordIndex) {
+                wordElement.style.opacity = '0.4';
+                wordElement.style.color = '';
+            } else if (idx === currentWordIndex) {
+                wordElement.style.opacity = '1';
+                wordElement.style.color = 'var(--accent-color)';
+            } else {
+                wordElement.style.opacity = '1';
+                wordElement.style.color = '';
+            }
+        });
+
+        updateStats();
     }
 
     function startScrolling() {

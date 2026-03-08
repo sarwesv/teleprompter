@@ -324,15 +324,51 @@ h1 {
     left: 50%;
     transform: translateX(-50%);
     display: flex;
+    flex-direction: column; /* Stack scrubber on top of buttons */
     align-items: center;
-    gap: 1.5rem;
+    gap: 0.8rem;
     padding: 0.75rem 1.5rem;
-    border-radius: 100px;
-    /* Pill shape */
+    border-radius: 30px; /* Adjusted for stacking */
     z-index: 50;
     opacity: 0.2;
-    /* Hide controls mostly until hover */
     transition: opacity var(--transition-smooth), transform var(--transition-smooth);
+}
+
+.scrubber-container {
+    width: 100%;
+    padding: 0 10px;
+    margin-bottom: -5px;
+}
+
+#script-scrubber {
+    width: 100% !important;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+#script-scrubber::-webkit-slider-runnable-track {
+    background: transparent;
+}
+
+#script-scrubber::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-glow);
+    margin-top: -4px;
+    border: 2px solid #fff;
+}
+
+.controls-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
 }
 
 .floating-controls:hover,
