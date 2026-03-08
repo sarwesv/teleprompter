@@ -30,7 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
         wrapper: document.getElementById('prompter-text-wrapper'),
         text: document.getElementById('prompter-text'),
         iconPlay: document.getElementById('icon-play'),
-        iconPause: document.getElementById('icon-pause')
+        iconPause: document.getElementById('icon-pause'),
+        stats: {
+            wpm: document.getElementById('stat-wpm'),
+            total: document.getElementById('stat-total-time'),
+            remaining: document.getElementById('stat-remaining-time')
+        }
     };
 
     // State Variables
@@ -43,6 +48,35 @@ document.addEventListener('DOMContentLoaded', () => {
     let scrollPosition = 0;
     let animationFrameId = null;
     let lastTimestamp = 0;
+    let totalWordCount = 0;
+
+    // --- Stats Logic ---
+    function formatTime(seconds) {
+        if (isNaN(seconds) || seconds === Infinity) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateStats() {
+        if (!display.stats.wpm) return;
+
+        const speedValue = parseInt(inputs.speed.value, 10);
+        // Base WPM logic: 100 on slider = roughly 250 WPM. 1 on slider = 50 WPM.
+        // Formula: WPM = (slider / 100 * 200) + 50
+        const targetWPM = Math.floor((speedValue / 100) * 200) + 50;
+        
+        display.stats.wpm.textContent = targetWPM;
+
+        if (totalWordCount > 0) {
+            const totalSeconds = (totalWordCount / targetWPM) * 60;
+            const remainingWords = Math.max(0, totalWordCount - currentWordIndex);
+            const remainingSeconds = (remainingWords / targetWPM) * 60;
+
+            display.stats.total.textContent = formatTime(totalSeconds);
+            display.stats.remaining.textContent = formatTime(remainingSeconds);
+        }
+    }
 
     // Core parameters
     const BASE_SPEED_MULTIPLIER = 0.5; // pixel per ms base roughly
@@ -322,6 +356,8 @@ document.addEventListener('DOMContentLoaded', () => {
         display.text.innerHTML = '';
         uiWords = [];
         const words = scriptContent.split(/(\s+)/);
+        totalWordCount = words.filter(w => w.trim().length > 0).length;
+
         words.forEach((wordStr) => {
             if (wordStr.trim().length === 0) {
                 display.text.appendChild(document.createTextNode(wordStr));
@@ -348,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 targetScrollPosition = 0;
             }
             updateScrollTransform();
+            updateStats();
         }, 50);
 
         setTimeout(startScrolling, 500); // Small delay to let UI settle before auto-starting
@@ -532,7 +569,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Settings Sliders ---
     inputs.size.addEventListener('input', (e) => {
         display.text.style.fontSize = `${e.target.value}px`;
-        // We recalculate layout limits if needed when size changes, but CSS handles it gracefully
+    });
+
+    inputs.speed.addEventListener('input', () => {
+        updateStats();
     });
 
     const updatePlayPauseIcons = () => {
@@ -573,6 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 updateScrollTransform();
+                updateStats();
             } else {
                 const speedValue = parseInt(inputs.speed.value, 10);
                 const pxPerSecond = (speedValue / 100) * 400 + 10;
@@ -587,6 +628,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 updateScrollTransform();
+                // Update stats every 10 pixels to balance accuracy and performance
+                if (Math.round(scrollPosition) % 10 === 0) updateStats();
             }
         }
 
