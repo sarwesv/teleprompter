@@ -833,27 +833,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = await fileHandle.getFile();
             const content = await file.text();
             
-            inputs.script.value = content;
+            inputs.script.innerText = content;
             localStorage.setItem('teleprompter_script', content);
+            localStorage.removeItem('teleprompter_script_html');
+            updateEditorStats();
         } catch (err) {
             console.error('Load failed:', err);
         }
     });
 
-    // Fallback file input change handler (kept for browsers that don't support showOpenFilePicker)
+    // Fallback file input change handler
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            inputs.script.value = event.target.result;
-            // Optionally, we could auto-save to local storage here as well
-            localStorage.setItem('teleprompter_script', event.target.result);
+            const content = event.target.result;
+            inputs.script.innerText = content;
+            localStorage.setItem('teleprompter_script', content);
+            localStorage.removeItem('teleprompter_script_html');
+            updateEditorStats();
         };
         reader.readAsText(file);
         
-        // Reset the input so the same file can be loaded again if needed
+        // Reset so same file can be re-loaded
         e.target.value = '';
     });
 
