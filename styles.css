@@ -1,0 +1,415 @@
+:root {
+    --bg-color: #0d0f12;
+    --surface-color: rgba(25, 28, 33, 0.4);
+    --surface-border: rgba(255, 255, 255, 0.08);
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --accent-color: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.4);
+    --danger-color: #ef4444;
+
+    --font-ui: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-prompter: 'Inter', -apple-system, sans-serif;
+
+    --transition-fast: 0.15s ease;
+    --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.05), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.05), transparent 25%);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    height: 100vh;
+    overflow: hidden;
+    /* App feels native */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Base App Layout */
+#app {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Views Management */
+.view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-smooth), transform var(--transition-smooth);
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.98);
+}
+
+.view.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: scale(1);
+    z-index: 10;
+}
+
+/* --- EDIT MODE --- */
+#edit-view {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.glass-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background: var(--surface-color);
+    border: 1px solid var(--surface-border);
+    border-radius: 20px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    margin-bottom: 2rem;
+}
+
+h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.accent-text {
+    color: var(--accent-color);
+    text-shadow: 0 0 20px var(--accent-glow);
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-top: 0.25rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 130px);
+}
+
+.glass-panel {
+    background: var(--surface-color);
+    border: 1px solid var(--surface-border);
+    border-radius: 20px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+#script-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: var(--font-prompter);
+    font-size: 1.2rem;
+    line-height: 1.6;
+    padding: 2rem;
+    resize: none;
+    outline: none;
+    width: 100%;
+}
+
+#script-input::placeholder {
+    color: rgba(148, 163, 184, 0.4);
+}
+
+/* --- PLAY MODE --- */
+#play-view {
+    background: #000;
+    /* Deep black for prompter reflection */
+}
+
+#prompter-display-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    /* Apply vertical fading mask. White is opaque, transparent is hidden */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 15%, black 32%, black 45%, rgba(0,0,0,0.1) 85%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.1) 15%, black 32%, black 45%, rgba(0,0,0,0.1) 85%, transparent 100%);
+}
+
+.eye-line-marker {
+    position: absolute;
+    top: 35%;
+    left: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.3;
+    /* Subtle so it doesn't distract reading */
+    transition: opacity var(--transition-fast);
+}
+
+.eye-line-marker:hover {
+    opacity: 0.8;
+}
+
+.marker-line {
+    height: 1px;
+    background: var(--accent-color);
+    flex: 1;
+    box-shadow: 0 0 8px var(--accent-color);
+}
+
+.marker-text {
+    color: var(--accent-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 0 1rem;
+}
+
+.prompter-text-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Will translate this using JS */
+    will-change: transform;
+    padding: 0 10vw;
+    display: flex;
+    justify-content: center;
+}
+
+.prompter-content {
+    width: 100%;
+    max-width: 1000px;
+    font-family: var(--font-prompter);
+    /* Dynamic size via JS, fallback below */
+    font-size: 64px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #fff;
+    white-space: pre-wrap;
+    /* We add immense padding so we can scroll past the text completely */
+    padding-top: 100vh;
+    padding-bottom: 100vh;
+}
+
+.mirrored {
+    transform: scaleX(-1);
+}
+
+/* Floating Controls Layer (Play Mode) */
+.floating-controls {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 100px;
+    /* Pill shape */
+    z-index: 50;
+    opacity: 0.2;
+    /* Hide controls mostly until hover */
+    transition: opacity var(--transition-smooth), transform var(--transition-smooth);
+}
+
+.floating-controls:hover,
+.floating-controls:focus-within {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-5px);
+}
+
+.control-separator {
+    width: 1px;
+    height: 24px;
+    background: var(--surface-border);
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+
+/* --- BUTTONS & CONTROLS --- */
+.btn {
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all var(--transition-fast);
+    border: none;
+    outline: none;
+}
+
+.primary-btn {
+    background: var(--accent-color);
+    color: #fff;
+    box-shadow: 0 4px 14px 0 var(--accent-glow);
+}
+
+.primary-btn:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+}
+
+.primary-btn:active {
+    transform: translateY(0);
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border: 1px solid var(--surface-border);
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.danger-hover:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.active-toggle {
+    background: var(--accent-color) !important;
+    color: #fff !important;
+    border-color: var(--accent-color) !important;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    transition: all var(--transition-fast);
+}
+
+.action-btn {
+    background: var(--accent-color);
+    color: white;
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+}
+
+input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100px;
+    background: transparent;
+    cursor: pointer;
+}
+
+input[type=range]:focus {
+    outline: none;
+}
+
+/* Slider Track */
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+/* Slider Thumb */
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    margin-top: -6px;
+    /* center thumb on track */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    transition: transform var(--transition-fast);
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: var(--accent-color);
+}
+
+.small-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+/* Pulse animation for play button when paused */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+}
+
+.pulse-anim {
+    animation: pulse 2s infinite;
+}
+
+.pulse-anim.playing {
+    animation: none;
+}
