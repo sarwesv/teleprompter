@@ -101,8 +101,20 @@ body {
 /* --- EDIT MODE --- */
 #edit-view {
     padding: 2rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#edit-view > .glass-header {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#edit-view > :not(.glass-header) {
     max-width: 1200px;
-    margin: 0 auto;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .glass-header {
