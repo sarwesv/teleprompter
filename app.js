@@ -67,15 +67,22 @@ document.addEventListener('DOMContentLoaded', () => {
             let spokenWords = interimTranscript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 0);
             if (spokenWords.length === 0) return;
 
+            // Use the last 5 words heard for context
             const recentSpoken = spokenWords.slice(-5);
             let bestMatchIndex = -1;
             let maxConsecutiveMatches = 0;
-            let matchDistance = 999;
+            let minMatchDistance = 999;
 
+            // Iterate through the spoken window to find the best phrase/word match
             for (let swIdx = 0; swIdx < recentSpoken.length; swIdx++) {
-                for (let i = currentWordIndex; i < Math.min(currentWordIndex + 15, uiWords.length); i++) {
+                // Search window: how far ahead to look in the script
+                // We search from currentWordIndex up to +15 words
+                const searchLimit = Math.min(currentWordIndex + 15, uiWords.length);
+                
+                for (let i = currentWordIndex; i < searchLimit; i++) {
                     let scriptWord = uiWords[i].dataset.clean;
                     if (scriptWord && scriptWord === recentSpoken[swIdx]) {
+                        // Count consecutive matches (phrase matching)
                         let consecutive = 1;
                         while (
                             swIdx + consecutive < recentSpoken.length &&
@@ -86,14 +93,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             consecutive++;
                         }
 
+                        let matchDistance = i - currentWordIndex;
+                        
+                        // Scoring logic:
+                        // 1. More consecutive words is always better
+                        // 2. Ties are broken by the match being closer to current position
                         if (consecutive > maxConsecutiveMatches) {
                             maxConsecutiveMatches = consecutive;
                             bestMatchIndex = i + consecutive - 1;
-                            matchDistance = i - currentWordIndex;
+                            minMatchDistance = matchDistance;
                         } else if (consecutive === maxConsecutiveMatches && maxConsecutiveMatches > 0) {
-                            if ((i - currentWordIndex) < matchDistance) {
+                            if (matchDistance < minMatchDistance) {
                                 bestMatchIndex = i + consecutive - 1;
-                                matchDistance = i - currentWordIndex;
+                                minMatchDistance = matchDistance;
                             }
                         }
                     }
@@ -101,21 +113,33 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (bestMatchIndex !== -1) {
-                // For single-word matches, require them to be close to avoid jumps to repeated words.
-                if (maxConsecutiveMatches > 1 || matchDistance <= 3) {
+                // Strict validation to avoid erratic jumps:
+                // - Single word matches: Only jump if very close (distance <= 2)
+                // - Phrases (2+ words): Allow jumping further (up to 15) to recover from misses
+                const isConfidentMatch = (maxConsecutiveMatches > 1) || (minMatchDistance <= 2);
+                
+                if (isConfidentMatch && bestMatchIndex >= currentWordIndex) {
+                    const previousIndex = currentWordIndex;
                     currentWordIndex = bestMatchIndex;
-                    const eyeLineOffset = display.container.clientHeight * 0.35;
-                    targetScrollPosition = Math.max(0, uiWords[currentWordIndex].offsetTop - eyeLineOffset);
+                    
+                    if (currentWordIndex !== previousIndex) {
+                        const eyeLineOffset = display.container.clientHeight * 0.35;
+                        targetScrollPosition = Math.max(0, uiWords[currentWordIndex].offsetTop - eyeLineOffset);
 
-                    // Dim previous words and highlight current
-                    uiWords.forEach(w => {
-                        w.style.opacity = '1';
-                        w.style.color = '';
-                    });
-                    for (let j = 0; j < currentWordIndex; j++) {
-                        uiWords[j].style.opacity = '0.5';
+                        // Highlight logic: only update if moved
+                        uiWords.forEach((wordElement, idx) => {
+                            if (idx < currentWordIndex) {
+                                wordElement.style.opacity = '0.4';
+                                wordElement.style.color = '';
+                            } else if (idx === currentWordIndex) {
+                                wordElement.style.opacity = '1';
+                                wordElement.style.color = 'var(--accent-color)';
+                            } else {
+                                wordElement.style.opacity = '1';
+                                wordElement.style.color = '';
+                            }
+                        });
                     }
-                    uiWords[currentWordIndex].style.color = 'var(--accent-color)';
                 }
             }
         };
