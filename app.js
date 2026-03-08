@@ -71,8 +71,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (totalWordCount > 0) {
             const totalSeconds = (totalWordCount / targetWPM) * 60;
-            const remainingWords = Math.max(0, totalWordCount - currentWordIndex);
-            const remainingSeconds = (remainingWords / targetWPM) * 60;
+            
+            let remainingSeconds;
+            if (useVoiceScroll) {
+                // In voice mode, use consumed words for precision
+                const remainingWords = Math.max(0, totalWordCount - currentWordIndex);
+                remainingSeconds = (remainingWords / targetWPM) * 60;
+            } else {
+                // In auto-scroll mode, use actual scroll progress for a smooth countdown
+                const maxScroll = display.wrapper.scrollHeight - display.container.clientHeight;
+                const progress = maxScroll > 0 ? Math.min(1, Math.max(0, scrollPosition / maxScroll)) : 0;
+                remainingSeconds = totalSeconds * (1 - progress);
+            }
 
             display.stats.total.textContent = formatTime(totalSeconds);
             display.stats.remaining.textContent = formatTime(remainingSeconds);
