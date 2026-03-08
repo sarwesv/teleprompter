@@ -192,33 +192,103 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    buttons.saveBtn.addEventListener('click', () => {
+    let scriptsDirectoryHandle = null;
+
+    async function getScriptsDirectory() {
+        if (scriptsDirectoryHandle) return scriptsDirectoryHandle;
+        try {
+            // Ask user to select a directory
+            scriptsDirectoryHandle = await window.showDirectoryPicker({
+                id: 'teleprompter-scripts',
+                mode: 'readwrite'
+            });
+            return scriptsDirectoryHandle;
+        } catch (err) {
+            console.error('Error picking directory:', err);
+            return null;
+        }
+    }
+
+    buttons.saveBtn.addEventListener('click', async () => {
         const scriptContent = inputs.script.value.trim();
         if (!scriptContent) {
             alert('Cannot save an empty script.');
             return;
         }
 
-        let fileName = prompt('Enter a name for your script:', 'my script1');
-        if (fileName === null) return; // User cancelled
-        fileName = fileName.trim() || 'my script1';
-        if (!fileName.endsWith('.txt')) fileName += '.txt';
+        if (!window.showSaveFilePicker || !window.showDirectoryPicker) {
+            alert('Your browser does not support saving to a specific folder natively. We will use the standard download method.');
+            // Fallback for unsupported browsers
+            let fileName = prompt('Enter a name for your script:', 'my script1');
+            if (fileName === null) return;
+            fileName = fileName.trim() || 'my script1';
+            if (!fileName.endsWith('.txt')) fileName += '.txt';
 
-        const blob = new Blob([scriptContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+            const blob = new Blob([scriptContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            return;
+        }
+
+        try {
+            const dirHandle = await getScriptsDirectory();
+            if (!dirHandle) return; // User cancelled
+
+            let fileName = prompt('Enter a name for your script:', 'my script1');
+            if (fileName === null) return;
+            fileName = fileName.trim() || 'my script1';
+            if (!fileName.endsWith('.txt')) fileName += '.txt';
+
+            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(scriptContent);
+            await writable.close();
+            
+            alert(`Script saved successfully to ${dirHandle.name}/${fileName}`);
+        } catch (err) {
+            console.error('Save failed:', err);
+            // If they cancel or it fails, silently fail or show generic alert
+        }
     });
 
-    buttons.loadBtn.addEventListener('click', () => {
-        fileInput.click();
+    buttons.loadBtn.addEventListener('click', async () => {
+        if (!window.showOpenFilePicker || !window.showDirectoryPicker) {
+            // Fallback to standard file input
+            fileInput.click();
+            return;
+        }
+
+        try {
+            const dirHandle = await getScriptsDirectory();
+            if (!dirHandle) return; // User cancelled
+
+            const [fileHandle] = await window.showOpenFilePicker({
+                startIn: dirHandle,
+                types: [{
+                    description: 'Text Files',
+                    accept: {
+                        'text/plain': ['.txt']
+                    }
+                }]
+            });
+
+            const file = await fileHandle.getFile();
+            const content = await file.text();
+            
+            inputs.script.value = content;
+            localStorage.setItem('teleprompter_script', content);
+        } catch (err) {
+            console.error('Load failed:', err);
+        }
     });
 
+    // Fallback file input change handler (kept for browsers that don't support showOpenFilePicker)
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
