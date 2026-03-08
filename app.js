@@ -199,11 +199,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        let fileName = prompt('Enter a name for your script:', 'my script1');
+        if (fileName === null) return; // User cancelled
+        fileName = fileName.trim() || 'my script1';
+        if (!fileName.endsWith('.txt')) fileName += '.txt';
+
         const blob = new Blob([scriptContent], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'teleprompter_script.txt';
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
