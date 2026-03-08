@@ -51,6 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
 
+    // Voice scroll state tracking
+    let speechResultsProcessedCount = 0;
+    let lastHandledTranscriptWordIndex = -1;
+
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.continuous = true;
@@ -59,92 +63,95 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition.onresult = (event) => {
             if (!useVoiceScroll || !isPlaying) return;
 
-            let interimTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                interimTranscript += event.results[i][0].transcript;
+            // 1. Get the latest transcript (combination of processed and new)
+            let fullTranscript = '';
+            for (let i = 0; i < event.results.length; ++i) {
+                fullTranscript += event.results[i][0].transcript;
             }
 
-            let spokenWords = interimTranscript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 0);
+            let spokenWords = fullTranscript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(w => w.length > 0);
             if (spokenWords.length === 0) return;
 
-            // Use the last 5 words heard for context
-            const recentSpoken = spokenWords.slice(-5);
-            let bestMatchIndex = -1;
-            let maxConsecutiveMatches = 0;
-            let minMatchDistance = 999;
+            // 2. Only look at words we haven't successfully "consumed" yet
+            // This prevents the same spoken word from matching multiple times in the script.
+            const newWordsToProcess = spokenWords.slice(lastHandledTranscriptWordIndex + 1);
+            if (newWordsToProcess.length === 0) return;
 
-            // Iterate through the spoken window to find the best phrase/word match
-            for (let swIdx = 0; swIdx < recentSpoken.length; swIdx++) {
-                // Search window: how far ahead to look in the script
-                // We search from currentWordIndex up to +15 words
+            let bestMatchInScript = -1;
+            let consumedTranscriptCount = 0;
+            let maxConsecutiveMatches = 0;
+
+            // We iterate through the NEW transcript words and try to match them ahead in the script
+            for (let swIdx = 0; swIdx < newWordsToProcess.length; swIdx++) {
+                // How far ahead to look in the script? (window of 15 words)
                 const searchLimit = Math.min(currentWordIndex + 15, uiWords.length);
                 
                 for (let i = currentWordIndex; i < searchLimit; i++) {
                     let scriptWord = uiWords[i].dataset.clean;
-                    if (scriptWord && scriptWord === recentSpoken[swIdx]) {
-                        // Count consecutive matches (phrase matching)
+                    
+                    if (scriptWord && scriptWord === newWordsToProcess[swIdx]) {
+                        // We found a match for a word we haven't used yet!
+                        
+                        // Check for phrases (consecutive words) for higher confidence
                         let consecutive = 1;
                         while (
-                            swIdx + consecutive < recentSpoken.length &&
+                            swIdx + consecutive < newWordsToProcess.length &&
                             i + consecutive < uiWords.length &&
                             uiWords[i + consecutive].dataset.clean &&
-                            recentSpoken[swIdx + consecutive] === uiWords[i + consecutive].dataset.clean
+                            newWordsToProcess[swIdx + consecutive] === uiWords[i + consecutive].dataset.clean
                         ) {
                             consecutive++;
                         }
 
                         let matchDistance = i - currentWordIndex;
                         
-                        // Scoring logic:
-                        // 1. More consecutive words is always better
-                        // 2. Ties are broken by the match being closer to current position
-                        if (consecutive > maxConsecutiveMatches) {
-                            maxConsecutiveMatches = consecutive;
-                            bestMatchIndex = i + consecutive - 1;
-                            minMatchDistance = matchDistance;
-                        } else if (consecutive === maxConsecutiveMatches && maxConsecutiveMatches > 0) {
-                            if (matchDistance < minMatchDistance) {
-                                bestMatchIndex = i + consecutive - 1;
-                                minMatchDistance = matchDistance;
+                        // Selection criteria:
+                        // - Phrases (2+ words) are high confidence and can skip ahead.
+                        // - Single words are low confidence and only move if they are the NEXT 1-2 words.
+                        if (consecutive > 1 || matchDistance <= 2) {
+                            // If this matches more words OR is closer, it's better
+                            if (consecutive >= maxConsecutiveMatches) {
+                                maxConsecutiveMatches = consecutive;
+                                bestMatchInScript = i + consecutive - 1;
+                                consumedTranscriptCount = swIdx + consecutive;
                             }
                         }
                     }
                 }
             }
 
-            if (bestMatchIndex !== -1) {
-                // Strict validation to avoid erratic jumps:
-                // - Single word matches: Only jump if very close (distance <= 2)
-                // - Phrases (2+ words): Allow jumping further (up to 15) to recover from misses
-                const isConfidentMatch = (maxConsecutiveMatches > 1) || (minMatchDistance <= 2);
+            // 3. If we found a confident match, move the prompter and "consume" those transcript words
+            if (bestMatchInScript !== -1 && bestMatchInScript >= currentWordIndex) {
+                const previousIndex = currentWordIndex;
+                currentWordIndex = bestMatchInScript;
                 
-                if (isConfidentMatch && bestMatchIndex >= currentWordIndex) {
-                    const previousIndex = currentWordIndex;
-                    currentWordIndex = bestMatchIndex;
-                    
-                    if (currentWordIndex !== previousIndex) {
-                        const eyeLineOffset = display.container.clientHeight * 0.35;
-                        targetScrollPosition = Math.max(0, uiWords[currentWordIndex].offsetTop - eyeLineOffset);
+                // Track that we used these words from the transcript
+                lastHandledTranscriptWordIndex += consumedTranscriptCount;
 
-                        // Highlight logic: only update if moved
-                        uiWords.forEach((wordElement, idx) => {
-                            if (idx < currentWordIndex) {
-                                wordElement.style.opacity = '0.4';
-                                wordElement.style.color = '';
-                            } else if (idx === currentWordIndex) {
-                                wordElement.style.opacity = '1';
-                                wordElement.style.color = 'var(--accent-color)';
-                            } else {
-                                wordElement.style.opacity = '1';
-                                wordElement.style.color = '';
-                            }
-                        });
-                    }
+                if (currentWordIndex !== previousIndex) {
+                    const eyeLineOffset = display.container.clientHeight * 0.35;
+                    targetScrollPosition = Math.max(0, uiWords[currentWordIndex].offsetTop - eyeLineOffset);
+
+                    // Update Highlighting
+                    uiWords.forEach((wordElement, idx) => {
+                        if (idx < currentWordIndex) {
+                            wordElement.style.opacity = '0.4';
+                            wordElement.style.color = '';
+                        } else if (idx === currentWordIndex) {
+                            wordElement.style.opacity = '1';
+                            wordElement.style.color = 'var(--accent-color)';
+                        } else {
+                            wordElement.style.opacity = '1';
+                            wordElement.style.color = '';
+                        }
+                    });
                 }
             }
         };
 
         recognition.onend = () => {
+            // When recognition ends, we reset the transcript index because a new session will start from index 0
+            lastHandledTranscriptWordIndex = -1;
             if (useVoiceScroll && isPlaying) {
                 try { recognition.start(); } catch (e) { }
             }
