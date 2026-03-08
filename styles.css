@@ -161,16 +161,25 @@ h1 {
 
 .blinking-cursor {
     display: inline-block;
-    width: 8px;
-    height: 16px;
-    background-color: var(--danger-color);
-    box-shadow: 0 0 10px var(--danger-color);
-    animation: cursor-blink 1s step-end infinite;
+    width: 3px;
+    height: 18px;
+    background-color: #ff3333;
+    box-shadow: 0 0 10px #ff3333, 0 0 20px #ff3333;
+    filter: drop-shadow(0 0 8px #ff3333);
+    animation: cursor-pulse 0.8s ease-in-out infinite alternate;
 }
 
-@keyframes cursor-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+@keyframes cursor-pulse {
+    from { 
+        opacity: 0.4;
+        transform: scaleY(0.9);
+        box-shadow: 0 0 5px #ff3333;
+    }
+    to { 
+        opacity: 1;
+        transform: scaleY(1.1);
+        box-shadow: 0 0 15px #ff3333, 0 0 25px #ff3333;
+    }
 }
 
 /* --- PLAY MODE --- */
