@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearEdit: document.getElementById('new-prompter-btn-edit'),
         saveBtn: document.getElementById('save-btn'),
         loadBtn: document.getElementById('load-btn'),
+        dictateBtn: document.getElementById('dictate-btn'),
         playPause: document.getElementById('play-pause-btn'),
         edit: document.getElementById('edit-btn'),
         mirror: document.getElementById('mirror-btn'),
@@ -139,7 +140,111 @@ document.addEventListener('DOMContentLoaded', () => {
         views[targetView].classList.add('active');
     }
 
+    // --- Dictation Feature Setup ---
+    let isDictating = false;
+    let dictationRecognition = null;
+
+    if (SpeechRecognition) {
+        dictationRecognition = new SpeechRecognition();
+        dictationRecognition.continuous = true;
+        dictationRecognition.interimResults = true;
+
+        dictationRecognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript + ' ';
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            // Append final results to the textarea
+            if (finalTranscript) {
+                // Determine if we need to add a space before the new text
+                const currentVal = inputs.script.value;
+                const needsSpace = currentVal.length > 0 && !currentVal.endsWith(' ') && !currentVal.endsWith('\n');
+                inputs.script.value += (needsSpace ? ' ' : '') + finalTranscript;
+            }
+        };
+
+        dictationRecognition.onerror = (event) => {
+            console.error('Dictation error:', event.error);
+            if (event.error === 'not-allowed') {
+                alert('Microphone access denied. Please allow microphone permissions to use dictation.');
+                stopDictation();
+            }
+        };
+
+        dictationRecognition.onend = () => {
+            if (isDictating) {
+                // Auto-restart if it stops unexpectedly while dictating
+                try { dictationRecognition.start(); } catch (e) {}
+            }
+        };
+    } else {
+        if (buttons.dictateBtn) {
+            buttons.dictateBtn.style.display = 'none';
+        }
+    }
+
+    function toggleDictation() {
+        if (!dictationRecognition) return;
+
+        if (isDictating) {
+            stopDictation();
+        } else {
+            startDictation();
+        }
+    }
+
+    function startDictation() {
+        try {
+            dictationRecognition.start();
+            isDictating = true;
+            if (buttons.dictateBtn) {
+                buttons.dictateBtn.classList.add('active-toggle');
+                buttons.dictateBtn.style.background = 'var(--accent-color)';
+                buttons.dictateBtn.style.color = 'white';
+                buttons.dictateBtn.style.border = 'none';
+                buttons.dictateBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="14" height="14" x="5" y="5" rx="2" ry="2"/>
+                    </svg>
+                    Stop Dictating
+                `;
+            }
+        } catch (e) {
+            console.error('Failed to start dictation:', e);
+        }
+    }
+
+    function stopDictation() {
+        isDictating = false;
+        dictationRecognition.stop();
+        if (buttons.dictateBtn) {
+            buttons.dictateBtn.classList.remove('active-toggle');
+            buttons.dictateBtn.style.background = '';
+            buttons.dictateBtn.style.color = '';
+            buttons.dictateBtn.style.border = '';
+            buttons.dictateBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="22"></line>
+                </svg>
+                Dictate
+            `;
+        }
+    }
+
     // --- Event Listeners (Edit View) ---
+    if (buttons.dictateBtn) {
+        buttons.dictateBtn.addEventListener('click', toggleDictation);
+    }
+
     buttons.startEdit.addEventListener('click', () => {
         const scriptContent = inputs.script.value.trim();
         if (!scriptContent) {
