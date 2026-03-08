@@ -134,6 +134,8 @@ h1 {
     resize: none;
     outline: none;
     width: 100%;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 #script-input::placeholder {
