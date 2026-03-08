@@ -21,7 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
         playPause: document.getElementById('play-pause-btn'),
         edit: document.getElementById('edit-btn'),
         mirror: document.getElementById('mirror-btn'),
-        voice: document.getElementById('voice-btn')
+        voice: document.getElementById('voice-btn'),
+        drive: document.getElementById('drive-btn')
     };
     
     const fileInput = document.getElementById('load-file-input');
@@ -50,6 +51,48 @@ document.addEventListener('DOMContentLoaded', () => {
     let animationFrameId = null;
     let lastTimestamp = 0;
     let totalWordCount = 0;
+
+    // --- Google Drive State ---
+    let tokenClient;
+    let accessToken = null;
+    let gapiInited = false;
+    let gsiInited = false;
+
+    // Placeholder credentials - User needs to replace these in a real deployment
+    const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // Replace with real ID from Google Cloud Console
+    const API_KEY = 'YOUR_GOOGLE_API_KEY';     // Replace with real key
+    const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+    const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+
+    function initGsi() {
+        if (!typeof google === 'undefined') {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (resp) => {
+                    if (resp.error !== undefined) throw (resp);
+                    accessToken = resp.access_token;
+                    buttons.drive.classList.add('connected');
+                    buttons.drive.title = 'Connected to Google Drive';
+                },
+            });
+            gsiInited = true;
+        }
+    }
+
+    function gapiLoaded() {
+        gapi.load('client', async () => {
+            await gapi.client.init({
+                apiKey: API_KEY,
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+        });
+    }
+
+    // Call loaders if available
+    if (window.gapi) gapiLoaded();
+    if (window.google) initGsi();
 
     // --- Stats Logic ---
     function formatTime(seconds) {
@@ -576,6 +619,95 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
+
+    // --- Google Drive Handlers ---
+    async function handleDriveLoad() {
+        if (!accessToken) {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+            return;
+        }
+
+        try {
+            const response = await gapi.client.drive.files.list({
+                pageSize: 10,
+                fields: 'nextPageToken, files(id, name)',
+                q: "mimeType='text/plain' and trashed=false"
+            });
+            const files = response.result.files;
+            if (files && files.length > 0) {
+                let fileList = files.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
+                const choice = prompt(`Select a file to load (1-${files.length}):\n\n${fileList}`);
+                const index = parseInt(choice) - 1;
+                if (index >= 0 && index < files.length) {
+                    const fileId = files[index].id;
+                    const contentResponse = await gapi.client.drive.files.get({
+                        fileId: fileId,
+                        alt: 'media'
+                    });
+                    inputs.script.value = contentResponse.body;
+                    alert('Script loaded from Google Drive! 📂');
+                }
+            } else {
+                alert('No text files found in your Google Drive root.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Drive Load Error: Ensure you have configured a valid API Key and allowed Drive access.');
+        }
+    }
+
+    async function handleDriveSave() {
+        if (!accessToken) {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+            return;
+        }
+
+        const content = inputs.script.value;
+        if (!content.trim()) return alert('Script is empty!');
+
+        try {
+            const fileName = prompt('Save to Google Drive as:', 'My Script.txt') || 'Untitled Script.txt';
+            
+            // Step 1: Create metadata
+            const metadata = {
+                name: fileName,
+                mimeType: 'text/plain'
+            };
+
+            const form = new FormData();
+            form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+            form.append('file', new Blob([content], { type: 'text/plain' }));
+
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+                body: form
+            });
+
+            if (response.ok) {
+                alert('Successfully saved to Google Drive! ✅');
+            } else {
+                throw new Error('Upload failed');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Drive Save Error: Ensure you have configured a valid Client ID.');
+        }
+    }
+
+    buttons.drive.addEventListener('click', () => {
+        if (CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+            alert('Google Drive integration requires a Client ID. Please see the walkthrough for setup instructions.');
+            return;
+        }
+        
+        const action = prompt('Type "SAVE" to upload current script, or "LOAD" to browse Drive:', 'SAVE');
+        if (action?.toUpperCase() === 'SAVE') {
+            handleDriveSave();
+        } else if (action?.toUpperCase() === 'LOAD') {
+            handleDriveLoad();
+        }
+    });
 
     // --- Settings Sliders ---
     inputs.size.addEventListener('input', (e) => {
