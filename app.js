@@ -612,41 +612,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isPlaying) return;
 
         if (!lastTimestamp) lastTimestamp = timestamp;
-
         const deltaTime = timestamp - lastTimestamp;
         lastTimestamp = timestamp;
 
-        if (deltaTime > 0 && deltaTime < 100) { // Safety cap on deltaTime
-            if (useVoiceScroll) {
-                const diff = targetScrollPosition - scrollPosition;
-                if (Math.abs(diff) > 1) { // Lerp towards target
-                    scrollPosition += diff * (deltaTime / 200);
-                }
-                const wrapperHeight = display.wrapper.scrollHeight;
-                if (scrollPosition > wrapperHeight) {
-                    stopScrolling();
-                    return;
-                }
-                updateScrollTransform();
-                updateStats();
-                updateScrubber();
-            } else {
+        if (deltaTime > 0 && deltaTime < 100) {
+            if (!useVoiceScroll) {
+                // Auto-scroll mode
                 const speedValue = parseInt(inputs.speed.value, 10);
                 const pxPerSecond = (speedValue / 100) * 400 + 10;
                 const pxPerFrame = pxPerSecond * (deltaTime / 1000);
-
-                scrollPosition += pxPerFrame;
-
-                const wrapperHeight = display.wrapper.scrollHeight;
-                if (scrollPosition > wrapperHeight) {
-                    stopScrolling();
-                    return;
-                }
-
-                updateScrollTransform();
-                updateStats();
-                updateScrubber();
+                targetScrollPosition += pxPerFrame;
             }
+
+            // Smooth gliding (Lerp) logic for all modes
+            // We smoothly move scrollPosition towards targetScrollPosition
+            const diff = targetScrollPosition - scrollPosition;
+            const lerpFactor = 1 - Math.exp(-deltaTime / 80); // ~80ms time constant for smooth glide
+            
+            if (Math.abs(diff) > 0.1) {
+                scrollPosition += diff * lerpFactor;
+            } else {
+                scrollPosition = targetScrollPosition;
+            }
+
+            // Boundary checks
+            const maxScroll = display.wrapper.scrollHeight - display.container.clientHeight;
+            if (targetScrollPosition > maxScroll + 100) { // Buffer for smooth end
+                stopScrolling();
+                return;
+            }
+
+            updateScrollTransform();
+            updateStats();
+            updateScrubber();
         }
 
         animationFrameId = requestAnimationFrame(scrollLoop);
@@ -664,11 +662,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleScrub(e) {
         const progress = parseFloat(e.target.value);
         const wrapperHeight = display.wrapper.scrollHeight - display.container.clientHeight;
-        scrollPosition = (progress / 100) * wrapperHeight;
-        targetScrollPosition = scrollPosition;
-        updateScrollTransform();
+        targetScrollPosition = (progress / 100) * wrapperHeight;
+        // Don't set scrollPosition directly, let the loop glide to it
         
-        // Find current word index based on scroll position
+        // Find current word index based on target scroll position
         const eyeLineOffset = display.container.clientHeight * 0.35;
         const currentTargetY = scrollPosition + eyeLineOffset;
         
@@ -739,13 +736,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 buttons.edit.click();
             } else if (e.code === 'ArrowUp') {
                 e.preventDefault();
-                scrollPosition = Math.max(0, scrollPosition - 50);
-                updateScrollTransform();
+                targetScrollPosition = Math.max(0, targetScrollPosition - 150);
             } else if (e.code === 'ArrowDown') {
                 e.preventDefault();
-                const wrapperHeight = display.wrapper.scrollHeight;
-                scrollPosition = Math.min(wrapperHeight, scrollPosition + 50);
-                updateScrollTransform();
+                targetScrollPosition += 150;
             } else if (e.code === 'ArrowRight') {
                 inputs.speed.value = Math.min(100, parseInt(inputs.speed.value) + 5);
             } else if (e.code === 'ArrowLeft') {
@@ -753,6 +747,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // Wheel / Trackpad Support
+    display.container.addEventListener('wheel', (e) => {
+        if (views.play.classList.contains('active')) {
+            e.preventDefault();
+            targetScrollPosition += e.deltaY;
+            targetScrollPosition = Math.max(0, targetScrollPosition);
+        }
+    }, { passive: false });
 
     // Initialize with font size from slider
     display.text.style.fontSize = `${inputs.size.value}px`;
