@@ -9,7 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
         script: document.getElementById('script-input'),
         speed: document.getElementById('speed-slider'),
         size: document.getElementById('size-slider'),
-        scrubber: document.getElementById('script-scrubber')
+        scrubber: document.getElementById('script-scrubber'),
+        theme: document.getElementById('theme-select'),
+        font: document.getElementById('font-select'),
+        themePlay: document.getElementById('theme-select-play'),
+        fontPlay: document.getElementById('font-select-play')
     };
 
     const buttons = {
@@ -21,7 +25,19 @@ document.addEventListener('DOMContentLoaded', () => {
         playPause: document.getElementById('play-pause-btn'),
         edit: document.getElementById('edit-btn'),
         mirror: document.getElementById('mirror-btn'),
-        voice: document.getElementById('voice-btn')
+        voice: document.getElementById('voice-btn'),
+        toggleSettings: document.getElementById('toggle-settings-btn'),
+        toggleSettingsPlay: document.getElementById('toggle-settings-play'),
+        library: document.getElementById('library-btn'),
+        closeLibrary: document.getElementById('close-library-btn')
+    };
+    
+    const panels = {
+        settings: document.getElementById('settings-panel'),
+        settingsPlay: document.getElementById('play-settings-panel'),
+        library: document.getElementById('library-sidebar'),
+        overlay: document.getElementById('sidebar-overlay'),
+        libraryList: document.getElementById('library-list')
     };
     
     const fileInput = document.getElementById('load-file-input');
@@ -36,7 +52,12 @@ document.addEventListener('DOMContentLoaded', () => {
             wpm: document.getElementById('stat-wpm'),
             total: document.getElementById('stat-total-time'),
             remaining: document.getElementById('stat-remaining-time')
-        }
+        },
+        editorStats: {
+            words: document.getElementById('editor-word-count'),
+            estimate: document.getElementById('editor-time-estimate')
+        },
+        eyeLine: document.getElementById('eye-line-marker')
     };
 
     // State Variables
@@ -50,6 +71,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let animationFrameId = null;
     let lastTimestamp = 0;
     let totalWordCount = 0;
+    let eyeLinePercent = parseFloat(localStorage.getItem('teleprompter_eye_line') || '35');
+    
+    // --- HOTKEYS SYSTEM ---
+    let hotkeys = JSON.parse(localStorage.getItem('teleprompter_hotkeys') || JSON.stringify({
+        togglePlay: 'Space',
+        speedUp: 'ArrowRight',
+        speedDown: 'ArrowLeft',
+        edit: 'Escape'
+    }));
+    let recordingAction = null;
 
     // --- Stats Logic ---
     function formatTime(seconds) {
@@ -87,6 +118,230 @@ document.addEventListener('DOMContentLoaded', () => {
             display.stats.total.textContent = formatTime(totalSeconds);
             display.stats.remaining.textContent = formatTime(remainingSeconds);
         }
+    }
+
+    function updateEditorStats() {
+        // Use innerText to count actual words, ignoring HTML tags
+        const text = inputs.script.innerText.trim();
+        const words = text ? text.split(/\s+/).length : 0;
+        
+        // Base estimate on a standard reading speed (e.g., 150 WPM)
+        const targetWPM = 150; 
+        const totalSeconds = (words / targetWPM) * 60;
+
+        if (display.editorStats.words) {
+            display.editorStats.words.textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+        }
+        if (display.editorStats.estimate) {
+            display.editorStats.estimate.textContent = `${formatTime(totalSeconds)} est.`;
+        }
+    }
+
+    // --- LIBRARY SYSTEM ---
+    let library = JSON.parse(localStorage.getItem('teleprompter_library') || '[]');
+
+    function saveToLibrary() {
+        const text = inputs.script.innerText.trim();
+        const html = inputs.script.innerHTML;
+        if (!text) return;
+
+        // Extract a title from the first line
+        const firstLine = text.split('\n')[0].substring(0, 40).trim() || 'Untitled Script';
+        const newScript = {
+            id: Date.now(),
+            title: firstLine,
+            content: html, // Store HTML now
+            date: new Date().toLocaleString(),
+            words: text.split(/\s+/).length
+        };
+
+        // Add to the beginning and keep only the 15 most recent
+        library.unshift(newScript);
+        library = library.slice(0, 15);
+        
+        localStorage.setItem('teleprompter_library', JSON.stringify(library));
+        renderLibrary();
+    }
+
+    function renderLibrary() {
+        if (!panels.libraryList) return;
+        
+        if (library.length === 0) {
+            panels.libraryList.innerHTML = '<p class="empty-state">No saved scripts yet.</p>';
+            return;
+        }
+
+        panels.libraryList.innerHTML = library.map(script => `
+            <div class="library-item" data-id="${script.id}">
+                <div class="library-item-header">
+                    <div class="library-item-title">${script.title}</div>
+                    <div class="library-item-meta">${script.date}</div>
+                </div>
+                <div class="library-item-meta">${script.words} words</div>
+                <div class="library-item-actions">
+                    <button class="btn primary-btn library-item-btn" onclick="window.loadScript(${script.id})">Load</button>
+                    <button class="btn secondary-btn library-item-btn danger-hover" onclick="window.deleteScript(${script.id})">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    window.loadScript = (id) => {
+        const script = library.find(s => s.id === id);
+        if (script) {
+            inputs.script.innerHTML = script.content;
+            updateEditorStats();
+            toggleLibrary(false);
+        }
+    };
+
+    window.deleteScript = (id) => {
+        library = library.filter(s => s.id !== id);
+        localStorage.setItem('teleprompter_library', JSON.stringify(library));
+        renderLibrary();
+    };
+
+    function toggleLibrary(show) {
+        panels.library.classList.toggle('open', show);
+        panels.overlay.classList.toggle('visible', show);
+    }
+
+    // --- EYE-LINE DRAGGING ---
+    function updateEyeLineUI() {
+        if (display.eyeLine) {
+            display.eyeLine.style.top = `${eyeLinePercent}%`;
+            localStorage.setItem('teleprompter_eye_line', eyeLinePercent);
+        }
+    }
+
+    if (display.eyeLine) {
+        let isDragging = false;
+        
+        display.eyeLine.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            display.eyeLine.setPointerCapture(e.pointerId);
+            display.eyeLine.classList.add('dragging');
+        });
+
+        display.eyeLine.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            
+            const containerRect = display.container.getBoundingClientRect();
+            const relativeY = e.clientY - containerRect.top;
+            let newPercent = (relativeY / containerRect.height) * 100;
+            
+            // Clamp between 10% and 80% to keep it useful
+            newPercent = Math.max(10, Math.min(85, newPercent));
+            eyeLinePercent = newPercent;
+            updateEyeLineUI();
+            
+            // If we are playing, we might want to adjust scroll to keep current word on the eye-line
+            if (isPlaying && uiWords[currentWordIndex]) {
+                const eyeLineOffset = display.container.clientHeight * (eyeLinePercent / 100);
+                targetScrollPosition = Math.max(0, uiWords[currentWordIndex].offsetTop - eyeLineOffset);
+            }
+        });
+
+        display.eyeLine.addEventListener('pointerup', (e) => {
+            isDragging = false;
+            display.eyeLine.releasePointerCapture(e.pointerId);
+            display.eyeLine.classList.remove('dragging');
+        });
+
+        // Initialize UI
+        updateEyeLineUI();
+    }
+
+    // --- HOTKEYS UI ---
+    function updateHotkeyUI() {
+        document.querySelectorAll('.hotkey-btn').forEach(btn => {
+            const action = btn.dataset.action;
+            btn.textContent = hotkeys[action] || 'None';
+        });
+    }
+
+    document.querySelectorAll('.hotkey-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (recordingAction) {
+                document.querySelector(`.hotkey-btn[data-action="${recordingAction}"]`)?.classList.remove('recording');
+            }
+            recordingAction = btn.dataset.action;
+            btn.classList.add('recording');
+            btn.textContent = 'Press any key...';
+        });
+    });
+
+    function handleHotkeyRecording(e) {
+        if (!recordingAction) return false;
+        
+        e.preventDefault();
+        const key = e.code;
+        hotkeys[recordingAction] = key;
+        localStorage.setItem('teleprompter_hotkeys', JSON.stringify(hotkeys));
+        
+        document.querySelector(`.hotkey-btn[data-action="${recordingAction}"]`)?.classList.remove('recording');
+        recordingAction = null;
+        updateHotkeyUI();
+        return true;
+    }
+
+    // --- RICH TEXT EDITOR LOGIC ---
+    document.querySelectorAll('.tool-btn[data-command]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const command = btn.dataset.command;
+            document.execCommand(command, false, null);
+            inputs.script.focus();
+        });
+    });
+
+    document.querySelectorAll('.color-btn[data-color]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const color = btn.dataset.color;
+            document.execCommand('foreColor', false, color);
+            inputs.script.focus();
+        });
+    });
+
+    // Handle Cmd+B, Cmd+I
+    inputs.script.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey) {
+            if (e.key === 'b') {
+                e.preventDefault();
+                document.execCommand('bold', false, null);
+            } else if (e.key === 'i') {
+                e.preventDefault();
+                document.execCommand('italic', false, null);
+            }
+        }
+    });
+
+    // Helper to process nodes for prompter (maintains styles but wraps words in spans)
+    function processPrompterNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            const fragment = document.createDocumentFragment();
+            // Split by words while keeping whitespace
+            const parts = node.textContent.split(/(\s+)/);
+            
+            parts.forEach(part => {
+                if (part.trim().length === 0) {
+                    fragment.appendChild(document.createTextNode(part));
+                } else {
+                    const span = document.createElement('span');
+                    span.textContent = part;
+                    span.dataset.clean = part.toLowerCase().replace(/[^\w\s]/g, '');
+                    uiWords.push(span);
+                    fragment.appendChild(span);
+                }
+            });
+            return fragment;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const clone = node.cloneNode(false); // Clone without children
+            node.childNodes.forEach(child => {
+                clone.appendChild(processPrompterNode(child));
+            });
+            return clone;
+        }
+        return node.cloneNode(true);
     }
 
     // Core parameters
@@ -174,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 lastHandledTranscriptWordIndex += consumedTranscriptCount;
 
                 if (currentWordIndex !== previousIndex) {
-                    const eyeLineOffset = display.container.clientHeight * 0.35;
+                    const eyeLineOffset = display.container.clientHeight * (eyeLinePercent / 100);
                     targetScrollPosition = Math.max(0, uiWords[currentWordIndex].offsetTop - eyeLineOffset);
 
                     // Update Highlighting
@@ -205,9 +460,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization ---
     // Load saved script if exists
+    const savedScriptHTML = localStorage.getItem('teleprompter_script_html');
     const savedScript = localStorage.getItem('teleprompter_script');
-    if (savedScript) {
-        inputs.script.value = savedScript;
+    
+    if (savedScriptHTML) {
+        inputs.script.innerHTML = savedScriptHTML;
+    } else if (savedScript) {
+        inputs.script.innerText = savedScript;
+    }
+
+    // --- Visual Styles Setup ---
+    function applyTheme(theme) {
+        document.body.classList.remove('theme-midnight', 'theme-paper', 'theme-classic');
+        if (theme !== 'midnight') {
+            document.body.classList.add(`theme-${theme}`);
+        }
+        localStorage.setItem('teleprompter_theme', theme);
+        if (inputs.theme) inputs.theme.value = theme;
+        if (inputs.themePlay) inputs.themePlay.value = theme;
+    }
+
+    function applyFont(font) {
+        display.text.classList.remove('font-sans', 'font-serif', 'font-mono');
+        display.text.classList.add(font);
+        localStorage.setItem('teleprompter_font', font);
+        if (inputs.font) inputs.font.value = font;
+        if (inputs.fontPlay) inputs.fontPlay.value = font;
+    }
+
+    // Initial load
+    const savedTheme = localStorage.getItem('teleprompter_theme') || 'midnight';
+    const savedFont = localStorage.getItem('teleprompter_font') || 'font-sans';
+    applyTheme(savedTheme);
+    applyFont(savedFont);
+
+    // Listeners
+    if (inputs.theme) {
+        inputs.theme.addEventListener('change', (e) => applyTheme(e.target.value));
+    }
+    if (inputs.font) {
+        inputs.font.addEventListener('change', (e) => applyFont(e.target.value));
+    }
+    if (inputs.themePlay) {
+        inputs.themePlay.addEventListener('change', (e) => applyTheme(e.target.value));
+    }
+    if (inputs.fontPlay) {
+        inputs.fontPlay.addEventListener('change', (e) => applyFont(e.target.value));
+    }
+
+    if (buttons.toggleSettings) {
+        buttons.toggleSettings.addEventListener('click', () => {
+            const isHidden = panels.settings.style.display === 'none';
+            panels.settings.style.display = isHidden ? 'flex' : 'none';
+            buttons.toggleSettings.classList.toggle('active-toggle', isHidden);
+        });
+    }
+
+    if (buttons.toggleSettingsPlay) {
+        buttons.toggleSettingsPlay.addEventListener('click', () => {
+            const isHidden = panels.settingsPlay.style.display === 'none';
+            panels.settingsPlay.style.display = isHidden ? 'flex' : 'none';
+            buttons.toggleSettingsPlay.classList.toggle('active-toggle', isHidden);
+        });
+    }
+
+    if (buttons.library) {
+        buttons.library.addEventListener('click', () => toggleLibrary(true));
+    }
+    if (buttons.closeLibrary) {
+        buttons.closeLibrary.addEventListener('click', () => toggleLibrary(false));
+    }
+    if (panels.overlay) {
+        panels.overlay.addEventListener('click', () => toggleLibrary(false));
     }
 
     // --- View Switching ---
@@ -353,33 +677,43 @@ document.addEventListener('DOMContentLoaded', () => {
         buttons.dictateBtn.addEventListener('click', toggleDictation);
     }
 
+    inputs.script.addEventListener('input', () => {
+        updateEditorStats();
+        localStorage.setItem('teleprompter_script', inputs.script.value.trim());
+    });
+    
+    // Initial calls
+    updateEditorStats();
+    renderLibrary();
+    updateHotkeyUI();
+
     buttons.startEdit.addEventListener('click', () => {
-        const scriptContent = inputs.script.value.trim();
+        const scriptContent = inputs.script.innerText.trim();
+        const scriptHTML = inputs.script.innerHTML;
         if (!scriptContent) {
-            alert('Please enter a script before starting.');
+            alert('Please enter or paste your script first!');
             return;
         }
-
-        // Save to local storage
-        localStorage.setItem('teleprompter_script', scriptContent);
-
-        // Setup text with spans for voice tracking
+        
+        // Auto-save to library when starting
+        saveToLibrary();
+        
+        // Setup prompter text via node processing to preserve Rich Text
         display.text.innerHTML = '';
         uiWords = [];
-        const words = scriptContent.split(/(\s+)/);
-        totalWordCount = words.filter(w => w.trim().length > 0).length;
-
-        words.forEach((wordStr) => {
-            if (wordStr.trim().length === 0) {
-                display.text.appendChild(document.createTextNode(wordStr));
-            } else {
-                const span = document.createElement('span');
-                span.textContent = wordStr;
-                span.dataset.clean = wordStr.toLowerCase().replace(/[^\w\s]/g, '');
-                display.text.appendChild(span);
-                uiWords.push(span);
-            }
+        
+        // Use a temp div to process the HTML
+        const temp = document.createElement('div');
+        temp.innerHTML = scriptHTML;
+        
+        temp.childNodes.forEach(child => {
+            display.text.appendChild(processPrompterNode(child));
         });
+
+        totalWordCount = uiWords.length;
+
+        localStorage.setItem('teleprompter_script_html', scriptHTML);
+        localStorage.setItem('teleprompter_script', scriptContent);
 
         switchView('play');
 
@@ -387,7 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             currentWordIndex = 0;
             if (useVoiceScroll && uiWords.length > 0) {
-                const eyeLineOffset = display.container.clientHeight * 0.35;
+                const eyeLineOffset = display.container.clientHeight * (eyeLinePercent / 100);
                 targetScrollPosition = Math.max(0, uiWords[0].offsetTop - eyeLineOffset);
                 scrollPosition = targetScrollPosition;
             } else {
@@ -403,8 +737,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buttons.clearEdit.addEventListener('click', () => {
         if (confirm('Are you sure you want to clear your script?')) {
-            inputs.script.value = '';
+            inputs.script.innerHTML = '';
             localStorage.removeItem('teleprompter_script');
+            localStorage.removeItem('teleprompter_script_html');
+            updateEditorStats();
         }
     });
 
@@ -559,7 +895,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     inputs.speed.parentElement.style.opacity = '0.3';
 
                     if (uiWords.length > currentWordIndex) {
-                        const eyeLineOffset = display.container.clientHeight * 0.35;
+                        const eyeLineOffset = display.container.clientHeight * (eyeLinePercent / 100);
                         targetScrollPosition = Math.max(0, uiWords[currentWordIndex].offsetTop - eyeLineOffset);
                     }
 
@@ -666,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Don't set scrollPosition directly, let the loop glide to it
         
         // Find current word index based on target scroll position
-        const eyeLineOffset = display.container.clientHeight * 0.35;
+        const eyeLineOffset = display.container.clientHeight * (eyeLinePercent / 100);
         const currentTargetY = scrollPosition + eyeLineOffset;
         
         let bestWordIdx = 0;
@@ -727,23 +1063,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Keyboard support
     document.addEventListener('keydown', (e) => {
+        // Handle Recording first
+        if (handleHotkeyRecording(e)) return;
+
         // Only active if in play view
         if (views.play.classList.contains('active')) {
-            if (e.code === 'Space') {
-                e.preventDefault(); // Prevent default page scroll
+            const keyCode = e.code;
+            
+            // Find action for this key
+            const action = Object.keys(hotkeys).find(key => hotkeys[key] === keyCode);
+            
+            if (action === 'togglePlay') {
+                e.preventDefault();
                 buttons.playPause.click();
-            } else if (e.code === 'Escape') {
+            } else if (action === 'edit') {
+                e.preventDefault();
                 buttons.edit.click();
-            } else if (e.code === 'ArrowUp') {
+            } else if (action === 'speedUp') {
+                e.preventDefault();
+                inputs.speed.value = Math.min(100, parseInt(inputs.speed.value) + 5);
+                updateStats();
+            } else if (action === 'speedDown') {
+                e.preventDefault();
+                inputs.speed.value = Math.max(1, parseInt(inputs.speed.value) - 5);
+                updateStats();
+            } else if (keyCode === 'ArrowUp') {
                 e.preventDefault();
                 targetScrollPosition = Math.max(0, targetScrollPosition - 150);
-            } else if (e.code === 'ArrowDown') {
+            } else if (keyCode === 'ArrowDown') {
                 e.preventDefault();
                 targetScrollPosition += 150;
-            } else if (e.code === 'ArrowRight') {
-                inputs.speed.value = Math.min(100, parseInt(inputs.speed.value) + 5);
-            } else if (e.code === 'ArrowLeft') {
-                inputs.speed.value = Math.max(1, parseInt(inputs.speed.value) - 5);
             }
         }
     });
