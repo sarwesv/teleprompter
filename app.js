@@ -644,11 +644,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 updateScrollTransform();
-                // Update stats every 10 pixels to balance accuracy and performance
-                if (Math.round(scrollPosition) % 10 === 0) {
-                    updateStats();
-                    updateScrubber();
-                }
+                updateStats();
+                updateScrubber();
             }
         }
 
