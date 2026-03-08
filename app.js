@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isDictating = true;
             if (buttons.dictateBtn) {
                 buttons.dictateBtn.classList.add('active-toggle');
-                buttons.dictateBtn.style.background = 'var(--accent-color)';
+                buttons.dictateBtn.style.background = '#ef4444'; // Red color to indicate recording
                 buttons.dictateBtn.style.color = 'white';
                 buttons.dictateBtn.style.border = 'none';
                 buttons.dictateBtn.innerHTML = `
