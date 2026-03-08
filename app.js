@@ -155,17 +155,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript + ' ';
+                    finalTranscript += event.results[i][0].transcript;
                 } else {
                     interimTranscript += event.results[i][0].transcript;
                 }
             }
 
-            // Append final results to the textarea
+            // Append final results to the textarea with basic punctuation
             if (finalTranscript) {
+                let currentVal = inputs.script.value;
+                
+                // Capitalize first letter if script is empty or ends with punctuation
+                const isStartOfSentence = currentVal.trim().length === 0 || 
+                                          window.lastDictationEndedWithPunctuation;
+                
+                if (isStartOfSentence) {
+                    finalTranscript = finalTranscript.trimStart();
+                    if (finalTranscript.length > 0) {
+                        finalTranscript = finalTranscript.charAt(0).toUpperCase() + finalTranscript.slice(1);
+                    }
+                }
+
+                // Add a period if it doesn't end with punctuation already
+                const trimmedFinal = finalTranscript.trimEnd();
+                if (trimmedFinal.length > 0 && !/[.!?]$/.test(trimmedFinal)) {
+                    finalTranscript = trimmedFinal + '. ';
+                    window.lastDictationEndedWithPunctuation = true;
+                } else if (trimmedFinal.length > 0) {
+                    finalTranscript = trimmedFinal + ' ';
+                    window.lastDictationEndedWithPunctuation = true;
+                } else {
+                    window.lastDictationEndedWithPunctuation = false;
+                }
+
                 // Determine if we need to add a space before the new text
-                const currentVal = inputs.script.value;
-                const needsSpace = currentVal.length > 0 && !currentVal.endsWith(' ') && !currentVal.endsWith('\n');
+                const needsSpace = currentVal.length > 0 && !currentVal.endsWith(' ') && !currentVal.endsWith('\n') && !isStartOfSentence;
                 inputs.script.value += (needsSpace ? ' ' : '') + finalTranscript;
             }
         };
