@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
         theme: document.getElementById('theme-select'),
         font: document.getElementById('font-select'),
         themePlay: document.getElementById('theme-select-play'),
-        fontPlay: document.getElementById('font-select-play')
+        fontPlay: document.getElementById('font-select-play'),
+        filename: document.getElementById('script-filename')
     };
 
     const buttons = {
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         playPause: document.getElementById('play-pause-btn'),
         edit: document.getElementById('edit-btn'),
         mirror: document.getElementById('mirror-btn'),
+        focus: document.getElementById('focus-btn'),
         voice: document.getElementById('voice-btn'),
         toggleSettings: document.getElementById('toggle-settings-btn'),
         toggleSettingsPlay: document.getElementById('toggle-settings-play'),
@@ -63,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // State Variables
     let isPlaying = false;
     let isMirrored = false;
+    let isFocusMode = localStorage.getItem('teleprompter_focus') === 'true';
     let useVoiceScroll = false;
     let currentWordIndex = 0;
     let targetScrollPosition = 0;
@@ -174,7 +177,12 @@ document.addEventListener('DOMContentLoaded', () => {
         panels.libraryList.innerHTML = library.map(script => `
             <div class="library-item" data-id="${script.id}">
                 <div class="library-item-header">
-                    <div class="library-item-title">${script.title}</div>
+                    <div class="library-item-title-row">
+                        <div class="library-item-title" id="title-${script.id}">${script.title}</div>
+                        <button class="library-rename-btn" onclick="window.renameScript(${script.id})" title="Rename script">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                    </div>
                     <div class="library-item-meta">${script.date}</div>
                 </div>
                 <div class="library-item-meta">${script.words} words</div>
@@ -201,6 +209,39 @@ document.addEventListener('DOMContentLoaded', () => {
         renderLibrary();
     };
 
+    window.renameScript = (id) => {
+        const titleEl = document.getElementById(`title-${id}`);
+        if (!titleEl || titleEl.querySelector('input')) return; // already editing
+
+        const currentTitle = titleEl.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentTitle;
+        input.className = 'library-rename-input';
+        input.maxLength = 60;
+
+        function commitRename() {
+            const newTitle = input.value.trim() || currentTitle;
+            const script = library.find(s => s.id === id);
+            if (script) {
+                script.title = newTitle;
+                localStorage.setItem('teleprompter_library', JSON.stringify(library));
+            }
+            renderLibrary();
+        }
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+            if (e.key === 'Escape') { renderLibrary(); }
+        });
+        input.addEventListener('blur', commitRename);
+
+        titleEl.textContent = '';
+        titleEl.appendChild(input);
+        input.focus();
+        input.select();
+    };
+
     function toggleLibrary(show) {
         panels.library.classList.toggle('open', show);
         panels.overlay.classList.toggle('visible', show);
@@ -211,6 +252,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (display.eyeLine) {
             display.eyeLine.style.top = `${eyeLinePercent}%`;
             localStorage.setItem('teleprompter_eye_line', eyeLinePercent);
+            if (display.container) {
+                display.container.style.setProperty('--eye-line', `${eyeLinePercent}%`);
+            }
         }
     }
 
@@ -254,9 +298,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- HOTKEYS UI ---
     function updateHotkeyUI() {
+        const keyDisplayMap = {
+            'ArrowRight': '→',
+            'ArrowLeft': '←',
+            'ArrowUp': '↑',
+            'ArrowDown': '↓',
+            'Space': 'Space',
+            'Escape': 'Esc'
+        };
         document.querySelectorAll('.hotkey-btn').forEach(btn => {
             const action = btn.dataset.action;
-            btn.textContent = hotkeys[action] || 'None';
+            const code = hotkeys[action];
+            btn.textContent = keyDisplayMap[code] || code || 'None';
         });
     }
 
@@ -771,9 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!window.showSaveFilePicker || !window.showDirectoryPicker) {
             alert('Your browser does not support saving to a specific folder natively. We will use the standard download method.');
             // Fallback for unsupported browsers
-            let fileName = prompt('Enter a name for your script:', 'my script1');
-            if (fileName === null) return;
-            fileName = fileName.trim() || 'my script1';
+            let fileName = inputs.filename.value.trim() || 'my script1';
             if (!fileName.endsWith('.txt')) fileName += '.txt';
 
             const blob = new Blob([scriptContent], { type: 'text/plain' });
@@ -791,10 +842,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const dirHandle = await getScriptsDirectory();
             if (!dirHandle) return; // User cancelled
-
-            let fileName = prompt('Enter a name for your script:', 'my script1');
-            if (fileName === null) return;
-            fileName = fileName.trim() || 'my script1';
+            
+            let fileName = inputs.filename.value.trim() || 'my script1';
             if (!fileName.endsWith('.txt')) fileName += '.txt';
 
             const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
@@ -888,6 +937,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    if (buttons.focus) {
+        function applyFocusMode() {
+            if (isFocusMode) {
+                display.container.classList.add('focus-mode');
+                buttons.focus.classList.add('active-toggle');
+            } else {
+                display.container.classList.remove('focus-mode');
+                buttons.focus.classList.remove('active-toggle');
+            }
+        }
+        buttons.focus.addEventListener('click', () => {
+            isFocusMode = !isFocusMode;
+            localStorage.setItem('teleprompter_focus', isFocusMode);
+            applyFocusMode();
+        });
+        applyFocusMode();
+    }
+
     if (buttons.voice) {
         if (!SpeechRecognition) {
             buttons.voice.style.display = 'none';
@@ -979,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxScroll = display.wrapper.scrollHeight - display.container.clientHeight;
             if (targetScrollPosition > maxScroll + 100) {
                 stopScrolling();
-                showEndModal();
+                switchView('edit');
                 return;
             }
 
@@ -1066,33 +1133,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- END OF SCRIPT MODAL ---
-    const endModal = document.getElementById('end-modal-overlay');
-
-    function showEndModal() {
-        if (endModal) {
-            endModal.style.display = 'flex';
-            // Small animation delay
-            requestAnimationFrame(() => endModal.classList.add('visible'));
-        }
-    }
-
-    function hideEndModal() {
-        if (endModal) {
-            endModal.classList.remove('visible');
-            setTimeout(() => { endModal.style.display = 'none'; }, 300);
-        }
-    }
-
-    document.getElementById('end-modal-yes')?.addEventListener('click', () => {
-        hideEndModal();
-        stopScrolling();
-        switchView('edit');
-    });
-
-    document.getElementById('end-modal-no')?.addEventListener('click', () => {
-        hideEndModal();
-    });
 
     // Keyboard support
     document.addEventListener('keydown', (e) => {
