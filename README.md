@@ -12,4 +12,4 @@ A simple web-based teleprompter application.
 
 ## Usage
 
-Simply open `index.html` in your web browser. Type or paste your script into the text area and press "Start" to begin the teleprompter. Use the controls at the top to adjust the speed, font size, flip the text, or toggle between day and night modes.
+Simply open `index.html` in your web browser. Type or paste your script into the text area and press "Start" to begin the teleprompter (you can also upload .txt Files). Use the controls at the top to adjust the speed, font size, flip the text, or toggle between day and night modes.
