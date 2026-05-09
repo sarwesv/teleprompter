@@ -921,7 +921,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxScroll = display.wrapper.scrollHeight - display.container.clientHeight;
             if (targetScrollPosition > maxScroll + 100) {
                 stopScrolling();
-                switchView('edit');
                 return;
             }
 
