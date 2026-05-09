@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buttons = {
         startEdit: document.getElementById('start-prompter-btn'),
         clearEdit: document.getElementById('new-prompter-btn-edit'),
-        saveBtn: document.getElementById('save-btn'),
+        downloadBtn: document.getElementById('download-btn'),
         loadBtn: document.getElementById('load-btn'),
         dictateBtn: document.getElementById('dictate-btn'),
         playPause: document.getElementById('play-pause-btn'),
@@ -536,6 +536,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyFont(font) {
         display.text.classList.remove('font-sans', 'font-serif', 'font-mono');
         display.text.classList.add(font);
+
+        if (inputs.script) {
+            inputs.script.classList.remove('font-sans', 'font-serif', 'font-mono');
+            inputs.script.classList.add(font);
+        }
+
         localStorage.setItem('teleprompter_font', font);
         if (inputs.font) inputs.font.value = font;
         if (inputs.fontPlay) inputs.fontPlay.value = font;
@@ -814,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    buttons.saveBtn.addEventListener('click', async () => {
+    buttons.downloadBtn.addEventListener('click', async () => {
         const scriptContent = inputs.script.value.trim();
         if (!scriptContent) {
             alert('Cannot save an empty script.');
