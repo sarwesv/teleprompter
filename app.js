@@ -659,12 +659,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     buttons.clearEdit.addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear your script?')) {
+        const modal = document.getElementById('modal-container');
+        const confirmBtn = document.getElementById('btn-modal-confirm');
+        const cancelBtn = document.getElementById('btn-modal-cancel');
+
+        modal.style.display = 'flex';
+
+        const onConfirm = () => {
             inputs.script.innerHTML = '';
             localStorage.removeItem('teleprompter_script');
             localStorage.removeItem('teleprompter_script_html');
             updateEditorStats();
-        }
+            modal.style.display = 'none';
+            cleanup();
+        };
+
+        const onCancel = () => {
+            modal.style.display = 'none';
+            cleanup();
+        };
+
+        const cleanup = () => {
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+        };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
     });
 
     let scriptsDirectoryHandle = null;
