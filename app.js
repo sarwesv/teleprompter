@@ -610,11 +610,33 @@ document.addEventListener('DOMContentLoaded', () => {
     renderLibrary();
     updateHotkeyUI();
 
+    function showNotification(message) {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerText = message;
+        
+        container.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateY(-10px)';
+            notification.style.transition = 'all 0.4s ease';
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    container.removeChild(notification);
+                }
+            }, 400);
+        }, 3000);
+    }
+
     buttons.startEdit.addEventListener('click', () => {
         const scriptContent = inputs.script.innerText.trim();
         const scriptHTML = inputs.script.innerHTML;
         if (!scriptContent) {
-            alert('Please enter or paste your script first!');
+            showNotification('Please enter or paste your script first!');
             return;
         }
         
@@ -708,12 +730,12 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.downloadBtn.addEventListener('click', async () => {
         const scriptContent = inputs.script.value.trim();
         if (!scriptContent) {
-            alert('Cannot save an empty script.');
+            showNotification('Cannot save an empty script.');
             return;
         }
 
         if (!window.showSaveFilePicker || !window.showDirectoryPicker) {
-            alert('Your browser does not support saving to a specific folder natively. We will use the standard download method.');
+            showNotification('Your browser does not support saving to a specific folder natively. We will use the standard download method.');
             // Fallback for unsupported browsers
             let fileName = inputs.filename.value.trim() || 'my script1';
             if (!fileName.endsWith('.txt')) fileName += '.txt';
@@ -742,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await writable.write(scriptContent);
             await writable.close();
             
-            alert(`Script saved successfully to ${dirHandle.name}/${fileName}`);
+            showNotification(`Script saved successfully to ${dirHandle.name}/${fileName}`);
         } catch (err) {
             console.error('Save failed:', err);
             // If they cancel or it fails, silently fail or show generic alert
