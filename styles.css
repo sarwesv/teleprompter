@@ -13,6 +13,15 @@
 
     --transition-fast: 0.15s ease;
     --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* --- LIQUID GLASS --- */
+    --glass-blur: 28px;
+    --glass-sheen: linear-gradient(150deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 28%, rgba(255, 255, 255, 0) 55%);
+    --glass-edge-top: rgba(255, 255, 255, 0.45);
+    --glass-edge-bottom: rgba(255, 255, 255, 0.06);
+    --glass-inner-glow: rgba(255, 255, 255, 0.04);
+    --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+    --glass-radius: 26px;
 }
 
 /* --- THEMES --- */
@@ -24,6 +33,12 @@ body.theme-paper {
     --text-secondary: #586e75;
     --accent-color: #cb4b16;
     --accent-glow: rgba(203, 75, 22, 0.2);
+
+    --glass-sheen: linear-gradient(150deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 32%, rgba(255, 255, 255, 0) 60%);
+    --glass-edge-top: rgba(255, 255, 255, 0.85);
+    --glass-edge-bottom: rgba(0, 0, 0, 0.04);
+    --glass-inner-glow: rgba(255, 255, 255, 0.15);
+    --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
 }
 
 body.theme-classic {
@@ -34,6 +49,12 @@ body.theme-classic {
     --text-secondary: #008800;
     --accent-color: #00ff00;
     --accent-glow: rgba(0, 255, 0, 0.4);
+
+    --glass-sheen: linear-gradient(150deg, rgba(0, 255, 0, 0.12) 0%, rgba(0, 255, 0, 0.03) 32%, rgba(0, 255, 0, 0) 60%);
+    --glass-edge-top: rgba(0, 255, 0, 0.35);
+    --glass-edge-bottom: rgba(0, 255, 0, 0.05);
+    --glass-inner-glow: rgba(0, 255, 0, 0.04);
+    --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
 }
 
 body.theme-classic #play-view {
@@ -124,11 +145,16 @@ body {
     flex-wrap: wrap;
     gap: 1.5rem;
     padding: 1.5rem 2rem;
-    background: var(--surface-color);
+    background: var(--glass-sheen), var(--surface-color);
     border: 1px solid var(--surface-border);
-    border-radius: 20px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    border-radius: var(--glass-radius);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    box-shadow:
+        var(--glass-shadow),
+        inset 0 1px 0 var(--glass-edge-top),
+        inset 0 -1px 1px var(--glass-edge-bottom),
+        inset 0 0 24px var(--glass-inner-glow);
     margin-bottom: 2rem;
 }
 
@@ -164,12 +190,16 @@ h1 {
 }
 
 .glass-panel {
-    background: var(--surface-color);
+    background: var(--glass-sheen), var(--surface-color);
     border: 1px solid var(--surface-border);
-    border-radius: 20px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border-radius: var(--glass-radius);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    box-shadow:
+        var(--glass-shadow),
+        inset 0 1px 0 var(--glass-edge-top),
+        inset 0 -1px 1px var(--glass-edge-bottom),
+        inset 0 0 24px var(--glass-inner-glow);
 }
 
 .editor-toolbar {
@@ -755,7 +785,10 @@ h1 {
 .primary-btn {
     background: var(--accent-color);
     color: #fff;
-    box-shadow: 0 4px 14px 0 var(--accent-glow);
+    box-shadow:
+        0 4px 14px 0 var(--accent-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.18);
 }
 
 .primary-btn:hover {
@@ -769,14 +802,18 @@ h1 {
 }
 
 .secondary-btn {
-    background: rgba(255, 255, 255, 0.05);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02)), rgba(255, 255, 255, 0.03);
     color: var(--text-primary);
     border: 1px solid var(--surface-border);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .secondary-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)), rgba(255, 255, 255, 0.06);
     transform: translateY(-2px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
 .danger-hover:hover {
@@ -911,9 +948,14 @@ input[type=range]::-webkit-slider-thumb:hover {
     left: 0;
     width: 350px;
     height: 100%;
-    background: var(--surface-color);
+    background: var(--glass-sheen), var(--surface-color);
     border-right: 1px solid var(--surface-border);
-    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    box-shadow:
+        20px 0 50px rgba(0, 0, 0, 0.5),
+        inset -1px 0 0 var(--glass-edge-bottom),
+        inset 1px 0 0 var(--glass-edge-top);
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
