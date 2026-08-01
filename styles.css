@@ -1,7 +1,7 @@
 :root {
-    --bg-color: #0d0f12;
-    --surface-color: rgba(25, 28, 33, 0.4);
-    --surface-border: rgba(255, 255, 255, 0.08);
+    --bg-color: #1b1e25;
+    --surface-color: #1b1e25;
+    --surface-border: rgba(255, 255, 255, 0.04);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --accent-color: #3b82f6;
@@ -14,47 +14,54 @@
     --transition-fast: 0.15s ease;
     --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* --- LIQUID GLASS --- */
-    --glass-blur: 28px;
-    --glass-sheen: linear-gradient(150deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 28%, rgba(255, 255, 255, 0) 55%);
-    --glass-edge-top: rgba(255, 255, 255, 0.45);
-    --glass-edge-bottom: rgba(255, 255, 255, 0.06);
-    --glass-inner-glow: rgba(255, 255, 255, 0.04);
-    --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
-    --glass-radius: 26px;
+    /* --- NEUMORPHISM ---
+       Opaque surfaces the same color as the background, extruded with a soft
+       light shadow (top-left) and dark shadow (bottom-right). */
+    --neu-light: #262a33;   /* raised highlight side */
+    --neu-dark: #0f1116;    /* raised shadow side */
+    --neu-distance: 8px;
+    --neu-blur: 18px;
+    --neu-raised:
+        var(--neu-distance) var(--neu-distance) var(--neu-blur) var(--neu-dark),
+        calc(-1 * var(--neu-distance)) calc(-1 * var(--neu-distance)) var(--neu-blur) var(--neu-light);
+    --neu-raised-sm:
+        4px 4px 9px var(--neu-dark),
+        -4px -4px 9px var(--neu-light);
+    --neu-inset:
+        inset 5px 5px 11px var(--neu-dark),
+        inset -5px -5px 11px var(--neu-light);
+    --glass-radius: 24px;
+
+    /* Paper-roll curl shading at the top/bottom of the prompter */
+    --roll-shadow: rgba(0, 0, 0, 0.9);
 }
 
 /* --- THEMES --- */
 body.theme-paper {
-    --bg-color: #fdf6e3;
-    --surface-color: rgba(238, 232, 213, 0.6);
-    --surface-border: rgba(0, 0, 0, 0.1);
-    --text-primary: #073642;
-    --text-secondary: #586e75;
+    --bg-color: #e6e7ee;
+    --surface-color: #e6e7ee;
+    --surface-border: rgba(0, 0, 0, 0.05);
+    --text-primary: #4b5066;
+    --text-secondary: #8a90a6;
     --accent-color: #cb4b16;
     --accent-glow: rgba(203, 75, 22, 0.2);
 
-    --glass-sheen: linear-gradient(150deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.2) 32%, rgba(255, 255, 255, 0) 60%);
-    --glass-edge-top: rgba(255, 255, 255, 0.85);
-    --glass-edge-bottom: rgba(0, 0, 0, 0.04);
-    --glass-inner-glow: rgba(255, 255, 255, 0.15);
-    --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+    --neu-light: #ffffff;
+    --neu-dark: #c3c4cb;
+    --roll-shadow: rgba(120, 90, 40, 0.16);
 }
 
 body.theme-classic {
-    --bg-color: #000000;
-    --surface-color: rgba(40, 40, 40, 0.4);
-    --surface-border: rgba(255, 255, 255, 0.1);
+    --bg-color: #0b0f0b;
+    --surface-color: #0b0f0b;
+    --surface-border: rgba(0, 255, 0, 0.08);
     --text-primary: #00ff00;
     --text-secondary: #008800;
     --accent-color: #00ff00;
     --accent-glow: rgba(0, 255, 0, 0.4);
 
-    --glass-sheen: linear-gradient(150deg, rgba(0, 255, 0, 0.12) 0%, rgba(0, 255, 0, 0.03) 32%, rgba(0, 255, 0, 0) 60%);
-    --glass-edge-top: rgba(0, 255, 0, 0.35);
-    --glass-edge-bottom: rgba(0, 255, 0, 0.05);
-    --glass-inner-glow: rgba(0, 255, 0, 0.04);
-    --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    --neu-light: #141a14;
+    --neu-dark: #030503;
 }
 
 body.theme-classic #play-view {
@@ -62,7 +69,7 @@ body.theme-classic #play-view {
 }
 
 body.theme-paper #play-view {
-    background-color: #fdf6e3;
+    background-color: var(--bg-color);
 }
 
 /* --- FONTS --- */
@@ -145,16 +152,10 @@ body {
     flex-wrap: wrap;
     gap: 1.5rem;
     padding: 1.5rem 2rem;
-    background: var(--glass-sheen), var(--surface-color);
-    border: 1px solid var(--surface-border);
+    background: var(--surface-color);
+    border: none;
     border-radius: var(--glass-radius);
-    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-    box-shadow:
-        var(--glass-shadow),
-        inset 0 1px 0 var(--glass-edge-top),
-        inset 0 -1px 1px var(--glass-edge-bottom),
-        inset 0 0 24px var(--glass-inner-glow);
+    box-shadow: var(--neu-raised);
     margin-bottom: 2rem;
 }
 
@@ -190,16 +191,10 @@ h1 {
 }
 
 .glass-panel {
-    background: var(--glass-sheen), var(--surface-color);
-    border: 1px solid var(--surface-border);
+    background: var(--surface-color);
+    border: none;
     border-radius: var(--glass-radius);
-    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-    box-shadow:
-        var(--glass-shadow),
-        inset 0 1px 0 var(--glass-edge-top),
-        inset 0 -1px 1px var(--glass-edge-bottom),
-        inset 0 0 24px var(--glass-inner-glow);
+    box-shadow: var(--neu-raised);
 }
 
 .editor-toolbar {
@@ -268,26 +263,114 @@ h1 {
     color: var(--text-secondary);
 }
 
-.tool-select {
+.spellcheck-btn {
+    width: auto;
+    gap: 5px;
+    padding: 6px 9px;
+}
+
+.spell-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Misspelled word underline in the editor */
+.misspelled {
+    text-decoration: underline wavy var(--danger-color);
+    text-decoration-skip-ink: none;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+/* Suggestions popover */
+.spell-popover {
+    position: fixed;
+    z-index: 3000;
+    min-width: 160px;
+    max-width: 240px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--surface-color);
+    border: none;
+    border-radius: 16px;
+    box-shadow: var(--neu-raised);
+}
+
+.spell-sug {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    font-family: var(--font-ui);
+    transition: all var(--transition-fast);
+}
+
+.spell-sug:hover {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.spell-none {
+    padding: 6px 10px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.spell-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 2px;
+    padding-top: 4px;
+    border-top: 1px solid var(--surface-border);
+}
+
+.spell-actions button {
+    flex: 1;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--surface-border);
+    color: var(--text-secondary);
+    padding: 5px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-family: var(--font-ui);
+    transition: all var(--transition-fast);
+}
+
+.spell-actions button:hover {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.tool-select {
+    background: var(--surface-color);
+    border: none;
     color: var(--text-secondary);
     font-size: 0.85rem;
     font-weight: 500;
     padding: 5px 8px;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     outline: none;
-    transition: all var(--transition-fast);
+    box-shadow: inset 2px 2px 4px var(--neu-dark), inset -2px -2px 4px var(--neu-light);
+    transition: color var(--transition-fast);
 }
 
 .tool-select:hover {
     color: var(--accent-color);
-    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .tool-select option {
-    background: var(--surface-bg, #1e293b);
+    background: var(--surface-color);
     color: var(--text-primary);
 }
 
@@ -314,16 +397,17 @@ h1 {
 
 /* --- SELECT DROPDOWN DARK THEME --- */
 .select-pill {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--surface-border);
-    border-radius: 8px;
+    background-color: var(--surface-color);
+    border: none;
+    border-radius: 10px;
     color: var(--text-primary);
     padding: 6px 12px;
     font-family: var(--font-ui);
     font-size: 0.85rem;
     cursor: pointer;
     outline: none;
-    transition: border-color var(--transition-fast);
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+    transition: box-shadow var(--transition-fast), color var(--transition-fast);
     -webkit-appearance: none;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
@@ -333,40 +417,33 @@ h1 {
 }
 
 .select-pill:hover {
-    border-color: var(--accent-color);
+    color: var(--accent-color);
 }
 
 .select-pill:focus {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 1px var(--accent-color);
+    box-shadow: inset 2px 2px 6px var(--neu-dark), inset -2px -2px 6px var(--neu-light), 0 0 0 1px var(--accent-color);
 }
 
 .filename-input {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--surface-border);
-    border-radius: 8px;
+    background-color: var(--surface-color);
+    border: none;
+    border-radius: 10px;
     color: var(--text-primary);
     padding: 0.6rem 1rem;
     font-family: var(--font-ui);
     font-size: 0.95rem;
     outline: none;
-    transition: all var(--transition-fast);
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+    transition: box-shadow var(--transition-fast);
     width: 200px;
 }
 
-.filename-input:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
 .filename-input:focus {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 1px var(--accent-color);
+    box-shadow: inset 2px 2px 6px var(--neu-dark), inset -2px -2px 6px var(--neu-light), 0 0 0 1px var(--accent-color);
 }
 
 .select-pill option {
-    background: #1e293b;
+    background: var(--surface-color);
     color: var(--text-primary);
 }
 
@@ -485,30 +562,30 @@ h1 {
 }
 
 .select-pill {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--surface-border);
+    background-color: var(--surface-color);
+    border: none;
     color: var(--text-primary);
     padding: 0.4rem 0.8rem;
-    border-radius: 8px;
+    border-radius: 10px;
     font-size: 0.85rem;
     cursor: pointer;
     outline: none;
-    transition: all var(--transition-fast);
+    box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+    transition: box-shadow var(--transition-fast), color var(--transition-fast);
 }
 
 .select-pill:hover {
-    background: rgba(255, 255, 255, 0.1);
+    color: var(--accent-color);
 }
 
 .select-pill:focus {
-    border-color: var(--accent-color);
+    box-shadow: inset 2px 2px 6px var(--neu-dark), inset -2px -2px 6px var(--neu-light), 0 0 0 1px var(--accent-color);
 }
 
 .small-select {
     padding: 0.2rem 0.6rem;
     font-size: 0.75rem;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
 }
 
 .dictation-indicator {
@@ -567,11 +644,10 @@ h1 {
     align-items: center;
     gap: 1.5rem;
     padding: 0.6rem 2rem;
-    background: rgba(25, 28, 33, 0.6);
-    border: 1px solid var(--surface-border);
+    background: var(--surface-color);
+    border: none;
     border-radius: 100px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--neu-raised-sm);
     z-index: 100;
     transition: opacity var(--transition-smooth), transform var(--transition-smooth);
     opacity: 0.6;
@@ -625,6 +701,34 @@ h1 {
 #prompter-display-container.focus-mode {
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent calc(var(--eye-line) - 10%), black calc(var(--eye-line) + 2%), black calc(var(--eye-line) + 40%), rgba(0,0,0,0.05) 90%, transparent 100%);
     mask-image: linear-gradient(to bottom, transparent 0%, transparent calc(var(--eye-line) - 10%), black calc(var(--eye-line) + 2%), black calc(var(--eye-line) + 40%), rgba(0,0,0,0.05) 90%, transparent 100%);
+}
+
+/* Paper-roll curl: the script appears to curve away into shadow at the top and
+   bottom, like text wrapping around a roll of paper. These overlays sit on
+   #play-view (not the masked container) so the mask can't fade them out. */
+#play-view::before,
+#play-view::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 28%;
+    pointer-events: none;
+    z-index: 40;
+}
+
+#play-view::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--roll-shadow) 0%, rgba(0, 0, 0, 0) 100%);
+    border-bottom-left-radius: 50% 64px;
+    border-bottom-right-radius: 50% 64px;
+}
+
+#play-view::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--roll-shadow) 0%, rgba(0, 0, 0, 0) 100%);
+    border-top-left-radius: 50% 64px;
+    border-top-right-radius: 50% 64px;
 }
 
 .eye-line-marker {
@@ -772,7 +876,7 @@ h1 {
     font-weight: 600;
     font-size: 0.95rem;
     padding: 0.6rem 1.2rem;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -786,51 +890,59 @@ h1 {
     background: var(--accent-color);
     color: #fff;
     box-shadow:
-        0 4px 14px 0 var(--accent-glow),
-        inset 0 1px 0 rgba(255, 255, 255, 0.45),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.18);
+        5px 5px 11px var(--neu-dark),
+        -5px -5px 11px var(--neu-light);
 }
 
 .primary-btn:hover {
-    background: #2563eb;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+    box-shadow:
+        7px 7px 15px var(--neu-dark),
+        -7px -7px 15px var(--neu-light),
+        0 0 18px var(--accent-glow);
 }
 
 .primary-btn:active {
     transform: translateY(0);
+    box-shadow:
+        inset 4px 4px 9px rgba(0, 0, 0, 0.35),
+        inset -4px -4px 9px rgba(255, 255, 255, 0.25);
 }
 
 .secondary-btn {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.02)), rgba(255, 255, 255, 0.03);
+    background: var(--surface-color);
     color: var(--text-primary);
-    border: 1px solid var(--surface-border);
-    backdrop-filter: blur(10px) saturate(160%);
-    -webkit-backdrop-filter: blur(10px) saturate(160%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    border: none;
+    box-shadow: var(--neu-raised-sm);
 }
 
 .secondary-btn:hover {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05)), rgba(255, 255, 255, 0.06);
     transform: translateY(-2px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 6px 18px rgba(0, 0, 0, 0.25);
+    color: var(--accent-color);
+    box-shadow:
+        6px 6px 13px var(--neu-dark),
+        -6px -6px 13px var(--neu-light);
+}
+
+.secondary-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--neu-inset);
 }
 
 .danger-hover:hover {
-    background: rgba(239, 68, 68, 0.1);
     color: var(--danger-color);
-    border-color: rgba(239, 68, 68, 0.3);
 }
 
+/* Toggled "on" controls read as pressed-in */
 .active-toggle {
-    background: var(--accent-color) !important;
-    color: #fff !important;
-    border-color: var(--accent-color) !important;
+    background: var(--surface-color) !important;
+    color: var(--accent-color) !important;
+    box-shadow: var(--neu-inset) !important;
 }
 
 .icon-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--surface-border);
+    background: var(--surface-color);
+    border: none;
     color: var(--text-primary);
     cursor: pointer;
     display: flex;
@@ -840,12 +952,16 @@ h1 {
     width: auto;
     height: auto;
     padding: 8px 12px;
+    box-shadow: var(--neu-raised-sm);
     transition: all var(--transition-fast);
 }
 
 .icon-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.icon-btn:active {
+    box-shadow: var(--neu-inset);
 }
 
 #toggle-settings-btn.active-toggle,
@@ -948,14 +1064,9 @@ input[type=range]::-webkit-slider-thumb:hover {
     left: 0;
     width: 350px;
     height: 100%;
-    background: var(--glass-sheen), var(--surface-color);
-    border-right: 1px solid var(--surface-border);
-    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-    box-shadow:
-        20px 0 50px rgba(0, 0, 0, 0.5),
-        inset -1px 0 0 var(--glass-edge-bottom),
-        inset 1px 0 0 var(--glass-edge-top);
+    background: var(--surface-color);
+    border-right: none;
+    box-shadow: 12px 0 30px var(--neu-dark);
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);

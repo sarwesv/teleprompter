@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buttons = {
         startEdit: document.getElementById('start-prompter-btn'),
         save: document.getElementById('save-btn'),
+        spellcheck: document.getElementById('spellcheck-btn'),
         clearEdit: document.getElementById('new-prompter-btn-edit'),
         downloadBtn: document.getElementById('download-btn'),
         loadBtn: document.getElementById('load-btn'),
@@ -146,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveToLibrary() {
         const text = inputs.script.innerText.trim();
-        const html = inputs.script.innerHTML;
+        const html = getCleanHTML();
         if (!text) return false;
 
         // Prefer the filename the user typed; otherwise use the first line of the script
@@ -213,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const script = library.find(s => s.id === id);
         if (script) {
             inputs.script.innerHTML = script.content;
+            setSpellcheckOff();
             updateEditorStats();
             toggleLibrary(false);
         }
@@ -478,6 +480,202 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- SPELLCHECK (typo.js) ---
+    // A one-shot check: clicking the toolbar button highlights misspelled words
+    // with a red wavy underline; clicking a highlighted word shows suggestions.
+    let typoDict = null;
+    let dictLoading = false;
+    let spellcheckOn = false;
+    let ignoredWords = new Set();
+    let customWords = JSON.parse(localStorage.getItem('teleprompter_custom_words') || '[]');
+
+    const escapeHtml = (str) => str.replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+    const normalizeWord = (w) => w.replace(/^['’]+|['’]+$/g, '').toLowerCase();
+
+    async function ensureDictionary() {
+        if (typoDict) return true;
+        if (typeof Typo === 'undefined') {
+            showNotification('Spellcheck library could not be loaded.');
+            return false;
+        }
+        if (dictLoading) return false;
+        dictLoading = true;
+        showNotification('Loading spellcheck dictionary…');
+        try {
+            const base = 'vendor/typo/dictionaries/en_US/';
+            const [aff, dic] = await Promise.all([
+                fetch(base + 'en_US.aff').then(r => r.text()),
+                fetch(base + 'en_US.dic').then(r => r.text())
+            ]);
+            typoDict = new Typo('en_US', aff, dic);
+            return true;
+        } catch (err) {
+            console.error('Dictionary load failed:', err);
+            showNotification('Could not load the spellcheck dictionary.');
+            return false;
+        } finally {
+            dictLoading = false;
+        }
+    }
+
+    function isMisspelled(word) {
+        const w = normalizeWord(word);
+        if (w.length < 2) return false;
+        if (/\d/.test(w)) return false;
+        if (ignoredWords.has(w) || customWords.includes(w)) return false;
+        try { return !typoDict.check(w); } catch (e) { return false; }
+    }
+
+    function clearSpellHighlights() {
+        inputs.script.querySelectorAll('.misspelled').forEach(span => {
+            span.replaceWith(document.createTextNode(span.textContent));
+        });
+        inputs.script.normalize();
+    }
+
+    function runSpellcheck() {
+        clearSpellHighlights();
+        // Collect text nodes first (walking while mutating is unsafe)
+        const walker = document.createTreeWalker(inputs.script, NodeFilter.SHOW_TEXT, null);
+        const textNodes = [];
+        let node;
+        while ((node = walker.nextNode())) {
+            if (node.nodeValue && node.nodeValue.trim()) textNodes.push(node);
+        }
+
+        let count = 0;
+        textNodes.forEach(textNode => {
+            // Split into alternating [gap, word, gap, word, ...]
+            const parts = textNode.nodeValue.split(/([A-Za-z’']+)/);
+            const anyBad = parts.some((p, i) => i % 2 === 1 && isMisspelled(p));
+            if (!anyBad) return;
+
+            const frag = document.createDocumentFragment();
+            parts.forEach((part, i) => {
+                if (!part) return;
+                if (i % 2 === 1 && isMisspelled(part)) {
+                    const span = document.createElement('span');
+                    span.className = 'misspelled';
+                    span.textContent = part;
+                    frag.appendChild(span);
+                    count++;
+                } else {
+                    frag.appendChild(document.createTextNode(part));
+                }
+            });
+            textNode.parentNode.replaceChild(frag, textNode);
+        });
+        return count;
+    }
+
+    function setSpellcheckOff() {
+        if (!spellcheckOn) return;
+        clearSpellHighlights();
+        hideSpellPopover();
+        spellcheckOn = false;
+        if (buttons.spellcheck) buttons.spellcheck.classList.remove('active-toggle');
+    }
+
+    if (buttons.spellcheck) {
+        buttons.spellcheck.addEventListener('click', async () => {
+            if (spellcheckOn) { setSpellcheckOff(); saveScript(); return; }
+            if (!inputs.script.innerText.trim()) {
+                showNotification('Write or paste a script to check its spelling.');
+                return;
+            }
+            const ok = await ensureDictionary();
+            if (!ok) return;
+            const count = runSpellcheck();
+            spellcheckOn = true;
+            buttons.spellcheck.classList.add('active-toggle');
+            if (count === 0) {
+                showNotification('No spelling issues found. 🎉');
+                setSpellcheckOff();
+            } else {
+                showNotification(`${count} possible spelling ${count === 1 ? 'issue' : 'issues'} — click a highlighted word for suggestions.`);
+            }
+        });
+    }
+
+    // Suggestions popover
+    const spellPopover = document.createElement('div');
+    spellPopover.className = 'spell-popover';
+    spellPopover.style.display = 'none';
+    document.body.appendChild(spellPopover);
+    let activeMisspell = null;
+
+    function hideSpellPopover() {
+        spellPopover.style.display = 'none';
+        activeMisspell = null;
+    }
+
+    function openSpellPopover(span) {
+        activeMisspell = span;
+        const word = span.textContent;
+        let suggestions = [];
+        try { suggestions = (typoDict.suggest(word) || []).slice(0, 5); } catch (e) { }
+
+        let html = suggestions.length
+            ? suggestions.map(s => `<button class="spell-sug" data-sug="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')
+            : '<div class="spell-none">No suggestions</div>';
+        html += '<div class="spell-actions">'
+            + '<button class="spell-ignore">Ignore</button>'
+            + '<button class="spell-add">Add to dictionary</button>'
+            + '</div>';
+        spellPopover.innerHTML = html;
+
+        const rect = span.getBoundingClientRect();
+        spellPopover.style.display = 'block';
+        spellPopover.style.top = `${rect.bottom + 6}px`;
+        spellPopover.style.left = `${rect.left}px`;
+        requestAnimationFrame(() => {
+            const pw = spellPopover.offsetWidth;
+            if (rect.left + pw > window.innerWidth - 8) {
+                spellPopover.style.left = `${Math.max(8, window.innerWidth - pw - 8)}px`;
+            }
+        });
+    }
+
+    inputs.script.addEventListener('click', (e) => {
+        const span = e.target.closest('.misspelled');
+        if (span) openSpellPopover(span);
+        else hideSpellPopover();
+    });
+
+    spellPopover.addEventListener('click', (e) => {
+        if (!activeMisspell) return;
+        const sug = e.target.closest('.spell-sug');
+        if (sug) {
+            activeMisspell.replaceWith(document.createTextNode(sug.dataset.sug));
+            inputs.script.normalize();
+        } else if (e.target.closest('.spell-ignore')) {
+            ignoredWords.add(normalizeWord(activeMisspell.textContent));
+            activeMisspell.replaceWith(document.createTextNode(activeMisspell.textContent));
+            inputs.script.normalize();
+        } else if (e.target.closest('.spell-add')) {
+            const w = normalizeWord(activeMisspell.textContent);
+            if (w && !customWords.includes(w)) {
+                customWords.push(w);
+                localStorage.setItem('teleprompter_custom_words', JSON.stringify(customWords));
+            }
+            activeMisspell.replaceWith(document.createTextNode(activeMisspell.textContent));
+            inputs.script.normalize();
+        } else {
+            return;
+        }
+        saveScript();
+        hideSpellPopover();
+    });
+
+    // Dismiss the popover when clicking elsewhere
+    document.addEventListener('mousedown', (e) => {
+        if (spellPopover.style.display === 'none') return;
+        if (e.target.closest('.spell-popover') || e.target.closest('.misspelled')) return;
+        hideSpellPopover();
+    });
+
     // Helper to process nodes for prompter (maintains styles but wraps words in spans)
     function processPrompterNode(node) {
         if (node.nodeType === Node.TEXT_NODE) {
@@ -710,11 +908,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Listeners (Edit View) ---
+    // Returns the editor HTML with transient spellcheck highlight spans removed,
+    // so saved/played scripts never carry the red underline markup.
+    function getCleanHTML() {
+        const clone = inputs.script.cloneNode(true);
+        clone.querySelectorAll('.misspelled').forEach(span => {
+            span.replaceWith(document.createTextNode(span.textContent));
+        });
+        clone.normalize();
+        return clone.innerHTML;
+    }
+
     // Persist both the plain text and the rich HTML of the current script.
     // (#script-input is a contenteditable div, so read innerText/innerHTML — it has no .value)
     function saveScript() {
         localStorage.setItem('teleprompter_script', inputs.script.innerText.trim());
-        localStorage.setItem('teleprompter_script_html', inputs.script.innerHTML);
+        localStorage.setItem('teleprompter_script_html', getCleanHTML());
     }
 
     inputs.script.addEventListener('input', () => {
@@ -761,7 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     buttons.startEdit.addEventListener('click', () => {
         const scriptContent = inputs.script.innerText.trim();
-        const scriptHTML = inputs.script.innerHTML;
+        const scriptHTML = getCleanHTML();
         if (!scriptContent) {
             showNotification('Please enter or paste your script first!');
             return;
@@ -816,6 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const onConfirm = () => {
             inputs.script.innerHTML = '';
+            setSpellcheckOff();
             localStorage.removeItem('teleprompter_script');
             localStorage.removeItem('teleprompter_script_html');
             updateEditorStats();

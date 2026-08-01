@@ -14,7 +14,7 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@300;400;600;700&display=swap"
         rel="stylesheet">
     <!-- Main CSS -->
-    <link rel="stylesheet" href="styles.css?v=1.62">
+    <link rel="stylesheet" href="styles.css?v=1.63">
 </head>
 
 <body>
@@ -176,13 +176,18 @@
                         <option value="1.6">Large</option>
                         <option value="2.4">Huge</option>
                     </select>
+                    <div class="tool-separator"></div>
+                    <button type="button" class="tool-btn spellcheck-btn" id="spellcheck-btn" title="Check spelling (click a highlighted word for suggestions)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 11 7 15 15 5"></polyline><path d="M11 17c1.2-1.3 2.4-1.3 3.5 0s2.3 1.3 3.5 0 2.4-1.3 3.5 0"></path></svg>
+                        <span class="spell-label">Spell</span>
+                    </button>
                 </div>
                 <div class="editor-stats-overlay">
                     <span id="editor-word-count">0 words</span>
                     <span class="stat-sep">•</span>
                     <span id="editor-time-estimate">0:00 est.</span>
                 </div>
-                <div id="script-input" class="rich-editor" contenteditable="true" placeholder="Start typing or pasting your script here..."></div>
+                <div id="script-input" class="rich-editor" contenteditable="true" spellcheck="false" placeholder="Start typing or pasting your script here..."></div>
             </main>
         </section>
 
@@ -351,8 +356,10 @@
         </div>
     </div>
 
+    <!-- Spellcheck (typo.js) -->
+    <script src="vendor/typo/typo.js"></script>
     <!-- Main JS -->
-    <script src="app.js?v=1.46"></script>
+    <script src="app.js?v=1.47"></script>
 </body>
 
 </html>
