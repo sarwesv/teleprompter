@@ -202,6 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="library-item-meta">${script.words} words</div>
                 <div class="library-item-actions">
                     <button class="btn primary-btn library-item-btn" onclick="window.loadScript(${script.id})">Load</button>
+                    <button class="btn secondary-btn library-item-btn" onclick="window.renameScript(${script.id})">Rename</button>
                     <button class="btn secondary-btn library-item-btn danger-hover" onclick="window.deleteScript(${script.id})">Delete</button>
                 </div>
             </div>
@@ -814,48 +815,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    buttons.downloadBtn.addEventListener('click', async () => {
+    buttons.downloadBtn.addEventListener('click', () => {
         const scriptContent = inputs.script.innerText.trim();
         if (!scriptContent) {
             showNotification('Cannot save an empty script.');
             return;
         }
 
-        if (!window.showSaveFilePicker || !window.showDirectoryPicker) {
-            showNotification('Your browser does not support saving to a specific folder natively. We will use the standard download method.');
-            // Fallback for unsupported browsers
-            let fileName = inputs.filename.value.trim() || 'my script1';
-            if (!fileName.endsWith('.txt')) fileName += '.txt';
+        // Reliable, cross-browser download to the user's Downloads folder.
+        let fileName = (inputs.filename.value || '').trim() || 'Untitled Script';
+        if (!fileName.endsWith('.txt')) fileName += '.txt';
 
-            const blob = new Blob([scriptContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            return;
-        }
+        const blob = new Blob([scriptContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
 
-        try {
-            const dirHandle = await getScriptsDirectory();
-            if (!dirHandle) return; // User cancelled
-            
-            let fileName = inputs.filename.value.trim() || 'my script1';
-            if (!fileName.endsWith('.txt')) fileName += '.txt';
-
-            const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(scriptContent);
-            await writable.close();
-            
-            showNotification(`Script saved successfully to ${dirHandle.name}/${fileName}`);
-        } catch (err) {
-            console.error('Save failed:', err);
-            // If they cancel or it fails, silently fail or show generic alert
-        }
+        showNotification(`Downloaded "${fileName}".`);
     });
 
     buttons.loadBtn.addEventListener('click', async () => {
