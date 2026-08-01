@@ -528,6 +528,63 @@ document.addEventListener('DOMContentLoaded', () => {
         try { return !typoDict.check(w); } catch (e) { return false; }
     }
 
+    // Damerau-Levenshtein distance (edits including adjacent transpositions),
+    // so the closest real correction — e.g. "teh" -> "the" — ranks first.
+    function editDistance(a, b) {
+        const al = a.length, bl = b.length;
+        if (!al) return bl;
+        if (!bl) return al;
+        const d = Array.from({ length: al + 1 }, () => new Array(bl + 1).fill(0));
+        for (let i = 0; i <= al; i++) d[i][0] = i;
+        for (let j = 0; j <= bl; j++) d[0][j] = j;
+        for (let i = 1; i <= al; i++) {
+            for (let j = 1; j <= bl; j++) {
+                const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+                if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+                    d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+                }
+            }
+        }
+        return d[al][bl];
+    }
+
+    // Reapply the original word's capitalization pattern to a suggestion.
+    function matchCase(source, target) {
+        const core = source.replace(/^['’]+|['’]+$/g, '');
+        if (core.length > 1 && core === core.toUpperCase()) return target.toUpperCase();
+        if (core[0] && core[0] === core[0].toUpperCase()) {
+            return target.charAt(0).toUpperCase() + target.slice(1);
+        }
+        return target;
+    }
+
+    // Rank typo.js candidates by real edit distance, prefer a matching first
+    // letter and similar length, then restore the original capitalization.
+    function getSuggestions(word) {
+        const core = normalizeWord(word);
+        let raw = [];
+        try { raw = typoDict.suggest(word, 12) || []; } catch (e) { }
+        const seen = new Set();
+        return raw
+            .filter(s => {
+                const key = s.toLowerCase();
+                if (key === core || seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            })
+            .map(s => {
+                const cand = s.toLowerCase();
+                let score = editDistance(core, cand) * 10;
+                if (cand[0] !== core[0]) score += 4;                 // penalize different first letter
+                score += Math.abs(cand.length - core.length);        // penalize length mismatch
+                return { s, score };
+            })
+            .sort((a, b) => a.score - b.score)
+            .slice(0, 5)
+            .map(x => matchCase(word, x.s));
+    }
+
     function clearSpellHighlights() {
         inputs.script.querySelectorAll('.misspelled').forEach(span => {
             span.replaceWith(document.createTextNode(span.textContent));
@@ -578,6 +635,61 @@ document.addEventListener('DOMContentLoaded', () => {
         if (buttons.spellcheck) buttons.spellcheck.classList.remove('active-toggle');
     }
 
+    // Caret preservation: spellcheck only wraps words in spans, so the plain-text
+    // content is unchanged — an absolute character offset maps cleanly across a re-check.
+    function getCaretOffset(el) {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return null;
+        const range = sel.getRangeAt(0);
+        if (!el.contains(range.startContainer)) return null;
+        const pre = range.cloneRange();
+        pre.selectNodeContents(el);
+        pre.setEnd(range.startContainer, range.startOffset);
+        return pre.toString().length;
+    }
+
+    function setCaretOffset(el, offset) {
+        if (offset == null) return;
+        const range = document.createRange();
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+        let remaining = offset;
+        let node;
+        while ((node = walker.nextNode())) {
+            const len = node.nodeValue.length;
+            if (remaining <= len) {
+                range.setStart(node, remaining);
+                range.collapse(true);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                return;
+            }
+            remaining -= len;
+        }
+    }
+
+    // Live re-check: debounced so we only run shortly after typing pauses, and
+    // never mid-IME-composition (which would corrupt the composed text).
+    let spellcheckTimer = null;
+    let isComposing = false;
+
+    function scheduleLiveSpellcheck() {
+        if (!spellcheckOn || !typoDict) return;
+        clearTimeout(spellcheckTimer);
+        spellcheckTimer = setTimeout(() => {
+            if (!spellcheckOn || isComposing) return;
+            const caret = getCaretOffset(inputs.script);
+            runSpellcheck();
+            setCaretOffset(inputs.script, caret);
+        }, 500);
+    }
+
+    inputs.script.addEventListener('compositionstart', () => { isComposing = true; });
+    inputs.script.addEventListener('compositionend', () => {
+        isComposing = false;
+        scheduleLiveSpellcheck();
+    });
+
     if (buttons.spellcheck) {
         buttons.spellcheck.addEventListener('click', async () => {
             if (spellcheckOn) { setSpellcheckOff(); saveScript(); return; }
@@ -591,8 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
             spellcheckOn = true;
             buttons.spellcheck.classList.add('active-toggle');
             if (count === 0) {
-                showNotification('No spelling issues found. 🎉');
-                setSpellcheckOff();
+                showNotification('No spelling issues found — I\'ll keep checking as you type. 🎉');
             } else {
                 showNotification(`${count} possible spelling ${count === 1 ? 'issue' : 'issues'} — click a highlighted word for suggestions.`);
             }
@@ -614,8 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function openSpellPopover(span) {
         activeMisspell = span;
         const word = span.textContent;
-        let suggestions = [];
-        try { suggestions = (typoDict.suggest(word) || []).slice(0, 5); } catch (e) { }
+        const suggestions = getSuggestions(word);
 
         let html = suggestions.length
             ? suggestions.map(s => `<button class="spell-sug" data-sug="${escapeHtml(s)}">${escapeHtml(s)}</button>`).join('')
@@ -929,6 +1039,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inputs.script.addEventListener('input', () => {
         updateEditorStats();
         saveScript();
+        scheduleLiveSpellcheck();
     });
     
     // Initial calls
