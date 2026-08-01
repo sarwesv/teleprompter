@@ -24,15 +24,22 @@ Whether you're recording videos, giving presentations, or practicing speeches, t
 
 ## ✨ Features
 
+- **Rich Text Editor** - Write scripts with bold, italic, and colored text
+- **Clean Paste** - Pasted text is automatically stripped of its original font, size, and color so it adopts the app's default styling — then you can format it yourself
+- **Per-Selection Font Size** - Highlight any text and set it to Small, Normal, Large, or Huge; sizes scale relative to your global size setting
 - **Adjustable Scrolling Speed** - Control the speed of text scrolling to match your reading pace
-- **Customizable Font Size** - Increase or decrease text size for optimal readability
-- **Day/Night Modes** - Switch between light and dark themes to reduce eye strain
-- **Flippable Text** - Mirror text horizontally for use with actual teleprompter glass or reflective surfaces
-- **Resizable Text Area** - Adjust the text area dimensions to fit your screen layout
-- **File Upload** - Import `.txt` files directly into the teleprompter
-- **Manual Text Input** - Type or paste scripts directly into the text area
+- **Global Font Size** - Increase or decrease text size for optimal readability in both edit and play views
+- **Themes** - Choose between Midnight (dark), Paper (light), and Classic (retro)
+- **Font Styles** - Switch between Modern Sans, Formal Serif, and Technical Mono
+- **Mirror Mode** - Flip text horizontally for use with actual teleprompter glass or reflective surfaces
+- **Voice Scroll** - Optionally scroll hands-free as you speak, using your browser's speech recognition
+- **Draggable Eye-Line** - Move the "READ HERE" marker to your preferred reading position
+- **Focus Mode** - Dim everything except the line you're reading
+- **Script Library** - Auto-saves your recent scripts (up to 15) for quick reload, rename, and delete
+- **Live Stats** - See word count, estimated read time, WPM, and remaining time
+- **Configurable Hotkeys** - Remap play/pause, speed, and edit shortcuts
+- **File Load / Save** - Import and export `.txt` script files
 - **Responsive Design** - Works seamlessly on different screen sizes and devices
-- **Real-time Preview** - See your formatting changes instantly
 
 ## 🚀 Getting Started
 
@@ -97,11 +104,18 @@ cd teleprompter
 - **Clear** - Clear the text area
 - **Upload** - Import a `.txt` file
 
+### Editor Toolbar
+- **Bold / Italic** - Format the selected text (or use Cmd/Ctrl + B / I)
+- **Color Swatches** - Recolor the selected text
+- **Size Dropdown** - Set the selected text to Small, Normal, Large, or Huge
+
 ### Settings
 - **Speed Slider** - Adjust scrolling speed (slow to fast)
-- **Font Size Slider** - Increase or decrease text size
-- **Night Mode Toggle** - Switch between light and dark themes
-- **Flip Toggle** - Mirror text horizontally
+- **Font Size Slider** - Increase or decrease the overall text size
+- **Theme Select** - Switch between Midnight, Paper, and Classic themes
+- **Font Select** - Switch between Sans, Serif, and Mono fonts
+- **Mirror Toggle** - Flip text horizontally
+- **Voice / Focus Toggles** - Enable hands-free voice scrolling or focus mode
 
 ## ⚙️ Customization
 

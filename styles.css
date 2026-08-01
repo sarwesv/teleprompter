@@ -220,6 +220,29 @@ h1 {
     height: 28px;
 }
 
+.tool-select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--surface-border);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+    transition: all var(--transition-fast);
+}
+
+.tool-select:hover {
+    color: var(--accent-color);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.tool-select option {
+    background: var(--surface-bg, #1e293b);
+    color: var(--text-primary);
+}
+
 .rich-editor {
     flex: 1;
     padding: 24px;

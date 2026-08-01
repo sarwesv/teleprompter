@@ -368,6 +368,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Strip formatting on paste: insert as plain text so pasted content adopts
+    // the editor's default font, size, and color. The user can then style it here.
+    inputs.script.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const clipboard = e.clipboardData || window.clipboardData;
+        const text = clipboard ? clipboard.getData('text/plain') : '';
+        // insertText inserts at the caret, replaces any selection, and keeps line breaks
+        document.execCommand('insertText', false, text);
+        updateEditorStats();
+        saveScript();
+    });
+
+    // --- FONT SIZE (per selection) ---
+    // Sizes are relative (em) so they scale with the editor's base size AND with the
+    // prompter's global font-size slider once the script is playing.
+    const fontSizeSelect = document.getElementById('font-size-select');
+
+    function applyFontSize(em) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount || selection.isCollapsed) {
+            showNotification('Select some text first to change its size.');
+            return;
+        }
+
+        // execCommand('fontSize') is the reliable cross-browser way to wrap a selection;
+        // we tag with size 7 then convert the resulting <font> tags into styled spans.
+        document.execCommand('fontSize', false, '7');
+        inputs.script.querySelectorAll('font[size="7"]').forEach(font => {
+            const span = document.createElement('span');
+            while (font.firstChild) span.appendChild(font.firstChild);
+            // Clear any nested inline font sizes so relative (em) sizing can't compound
+            span.querySelectorAll('[style*="font-size"]').forEach(el => {
+                el.style.fontSize = '';
+            });
+            if (em === 1) {
+                // "Normal" resets to the editor/prompter default — no inline size needed
+                font.replaceWith(...span.childNodes);
+            } else {
+                span.style.fontSize = `${em}em`;
+                font.replaceWith(span);
+            }
+        });
+
+        inputs.script.focus();
+        updateEditorStats();
+        saveScript();
+    }
+
+    if (fontSizeSelect) {
+        fontSizeSelect.addEventListener('change', (e) => {
+            const em = parseFloat(e.target.value);
+            if (!isNaN(em)) applyFontSize(em);
+            e.target.selectedIndex = 0; // reset back to the "Size" label
+        });
+    }
+
     // Helper to process nodes for prompter (maintains styles but wraps words in spans)
     function processPrompterNode(node) {
         if (node.nodeType === Node.TEXT_NODE) {
@@ -600,9 +656,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Listeners (Edit View) ---
+    // Persist both the plain text and the rich HTML of the current script.
+    // (#script-input is a contenteditable div, so read innerText/innerHTML — it has no .value)
+    function saveScript() {
+        localStorage.setItem('teleprompter_script', inputs.script.innerText.trim());
+        localStorage.setItem('teleprompter_script_html', inputs.script.innerHTML);
+    }
+
     inputs.script.addEventListener('input', () => {
         updateEditorStats();
-        localStorage.setItem('teleprompter_script', inputs.script.value.trim());
+        saveScript();
     });
     
     // Initial calls

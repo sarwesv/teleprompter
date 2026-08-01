@@ -14,7 +14,7 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@300;400;600;700&display=swap"
         rel="stylesheet">
     <!-- Main CSS -->
-    <link rel="stylesheet" href="styles.css?v=1.58">
+    <link rel="stylesheet" href="styles.css?v=1.59">
 </head>
 
 <body>
@@ -140,6 +140,14 @@
                     <button type="button" class="tool-btn color-btn" data-color="#ef4444" title="Red" style="color: #ef4444">A</button>
                     <button type="button" class="tool-btn color-btn" data-color="#22c55e" title="Green" style="color: #22c55e">A</button>
                     <button type="button" class="tool-btn color-btn" data-color="#eab308" title="Yellow" style="color: #eab308">A</button>
+                    <div class="tool-separator"></div>
+                    <select id="font-size-select" class="tool-select" title="Font Size of Selected Text" aria-label="Font size">
+                        <option value="" disabled selected>Size</option>
+                        <option value="0.7">Small</option>
+                        <option value="1">Normal</option>
+                        <option value="1.6">Large</option>
+                        <option value="2.4">Huge</option>
+                    </select>
                 </div>
                 <div class="editor-stats-overlay">
                     <span id="editor-word-count">0 words</span>
@@ -316,7 +324,7 @@
     </div>
 
     <!-- Main JS -->
-    <script src="app.js?v=1.42"></script>
+    <script src="app.js?v=1.43"></script>
 </body>
 
 </html>
