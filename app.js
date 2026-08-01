@@ -367,10 +367,46 @@ document.addEventListener('DOMContentLoaded', () => {
             const color = btn.dataset.color;
             document.execCommand('foreColor', false, color);
             inputs.script.focus();
+            saveScript();
         });
     });
 
-    // Handle Cmd+B, Cmd+I
+    // Highlight (background) — wrap the selection in a span so we control both the
+    // background and a readable dark text color, and can fully remove it again.
+    function applyHighlight(color) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount || selection.isCollapsed) {
+            showNotification('Select some text first to highlight it.');
+            return;
+        }
+        document.execCommand('fontSize', false, '7');
+        inputs.script.querySelectorAll('font[size="7"]').forEach(font => {
+            const span = document.createElement('span');
+            while (font.firstChild) span.appendChild(font.firstChild);
+            // Clear any nested highlight so colors don't stack
+            span.querySelectorAll('[data-highlight]').forEach(el => {
+                el.style.backgroundColor = '';
+                el.style.color = '';
+                el.removeAttribute('data-highlight');
+            });
+            if (color === 'transparent') {
+                font.replaceWith(...span.childNodes); // unwrap: removes the highlight
+            } else {
+                span.setAttribute('data-highlight', '');
+                span.style.backgroundColor = color;
+                span.style.color = '#0f172a'; // keep highlighted text readable in every theme
+                font.replaceWith(span);
+            }
+        });
+        inputs.script.focus();
+        saveScript();
+    }
+
+    document.querySelectorAll('.highlight-btn[data-highlight]').forEach(btn => {
+        btn.addEventListener('click', () => applyHighlight(btn.dataset.highlight));
+    });
+
+    // Handle Cmd+B, Cmd+I, Cmd+U
     inputs.script.addEventListener('keydown', (e) => {
         if (e.metaKey || e.ctrlKey) {
             if (e.key === 'b') {
@@ -379,6 +415,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (e.key === 'i') {
                 e.preventDefault();
                 document.execCommand('italic', false, null);
+            } else if (e.key === 'u') {
+                e.preventDefault();
+                document.execCommand('underline', false, null);
             }
         }
     });

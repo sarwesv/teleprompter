@@ -220,6 +220,24 @@ h1 {
     height: 28px;
 }
 
+.highlight-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+}
+
+.highlight-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* The first highlight button is the "remove highlight" eraser icon */
+.highlight-btn[data-highlight="transparent"] {
+    color: var(--text-secondary);
+}
+
 .tool-select {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--surface-border);
