@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const buttons = {
         startEdit: document.getElementById('start-prompter-btn'),
+        save: document.getElementById('save-btn'),
         clearEdit: document.getElementById('new-prompter-btn-edit'),
         downloadBtn: document.getElementById('download-btn'),
         loadBtn: document.getElementById('load-btn'),
@@ -146,24 +147,37 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveToLibrary() {
         const text = inputs.script.innerText.trim();
         const html = inputs.script.innerHTML;
-        if (!text) return;
+        if (!text) return false;
 
-        // Extract a title from the first line
-        const firstLine = text.split('\n')[0].substring(0, 40).trim() || 'Untitled Script';
-        const newScript = {
-            id: Date.now(),
-            title: firstLine,
-            content: html, // Store HTML now
-            date: new Date().toLocaleString(),
-            words: text.split(/\s+/).length
-        };
+        // Prefer the filename the user typed; otherwise use the first line of the script
+        const typedName = inputs.filename ? inputs.filename.value.trim() : '';
+        const title = (typedName || text.split('\n')[0].substring(0, 40).trim() || 'Untitled Script');
 
-        // Add to the beginning and keep only the 15 most recent
-        library.unshift(newScript);
+        // De-duplicate: if the exact same content is already saved, just refresh
+        // that entry (move it to the top) instead of piling up duplicates.
+        const existing = library.find(s => s.content === html);
+        if (existing) {
+            library = library.filter(s => s !== existing);
+            existing.title = title;
+            existing.date = new Date().toLocaleString();
+            existing.words = text.split(/\s+/).length;
+            library.unshift(existing);
+        } else {
+            library.unshift({
+                id: Date.now(),
+                title,
+                content: html, // Store HTML now
+                date: new Date().toLocaleString(),
+                words: text.split(/\s+/).length
+            });
+        }
+
+        // Keep only the 15 most recent
         library = library.slice(0, 15);
-        
+
         localStorage.setItem('teleprompter_library', JSON.stringify(library));
         renderLibrary();
+        return true;
     }
 
     function renderLibrary() {
@@ -695,6 +709,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
+    if (buttons.save) {
+        buttons.save.addEventListener('click', () => {
+            if (saveToLibrary()) {
+                showNotification('Script saved to your library.');
+            } else {
+                showNotification('Write or paste a script before saving.');
+            }
+        });
+    }
+
     buttons.startEdit.addEventListener('click', () => {
         const scriptContent = inputs.script.innerText.trim();
         const scriptHTML = inputs.script.innerHTML;
@@ -791,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     buttons.downloadBtn.addEventListener('click', async () => {
-        const scriptContent = inputs.script.value.trim();
+        const scriptContent = inputs.script.innerText.trim();
         if (!scriptContent) {
             showNotification('Cannot save an empty script.');
             return;
