@@ -648,33 +648,38 @@ h1 {
     top: 35%;
     left: 0;
     width: 100%;
+    height: 24px;
     z-index: 50;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     pointer-events: auto;
     cursor: ns-resize;
     user-select: none;
-    transition: background-color 0.2s;
+    opacity: 0.35;
+    transform: translateY(-50%);
+    transition: opacity 0.2s;
 }
 
-.eye-line-marker:hover {
-    opacity: 0.8;
+.eye-line-marker:hover,
+.eye-line-marker.dragging {
+    opacity: 0.9;
 }
 
-.marker-line {
-    height: 1px;
-    background: var(--accent-color);
-    flex: 1;
-    box-shadow: 0 0 8px var(--accent-color);
+.marker-triangle {
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    filter: drop-shadow(0 0 5px var(--accent-color));
 }
 
-.marker-text {
-    color: var(--accent-color);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 2px;
-    padding: 0 1rem;
+.marker-triangle.left {
+    border-left: 14px solid var(--accent-color);
+}
+
+.marker-triangle.right {
+    border-right: 14px solid var(--accent-color);
 }
 
 .prompter-text-wrapper {
