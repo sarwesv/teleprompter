@@ -662,7 +662,8 @@ h1 {
 }
 
 .eye-line-marker:hover,
-.eye-line-marker.dragging {
+.eye-line-marker.dragging,
+.eye-line-marker.line-jump-pulse {
     opacity: 0.9;
 }
 
@@ -672,6 +673,17 @@ h1 {
     border-top: 10px solid transparent;
     border-bottom: 10px solid transparent;
     filter: drop-shadow(0 0 5px var(--accent-color));
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), filter 0.5s ease;
+}
+
+.eye-line-marker.line-jump-pulse .marker-triangle.left {
+    transform: translateX(-6px) scale(1.25);
+    filter: drop-shadow(0 0 10px var(--accent-color));
+}
+
+.eye-line-marker.line-jump-pulse .marker-triangle.right {
+    transform: translateX(6px) scale(1.25);
+    filter: drop-shadow(0 0 10px var(--accent-color));
 }
 
 .marker-triangle.left {

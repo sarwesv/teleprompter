@@ -1044,6 +1044,49 @@ document.addEventListener('DOMContentLoaded', () => {
         display.wrapper.style.transform = `translateY(-${scrollPosition}px)`;
     }
 
+    // Smoothly glides scrollPosition to a target over `duration` ms, independent
+    // of scrollLoop/isPlaying (used for manual line-by-line nudges while paused).
+    let lineJumpFrameId = null;
+    function animateScrollTo(target, duration = 220) {
+        if (lineJumpFrameId) cancelAnimationFrame(lineJumpFrameId);
+
+        const start = scrollPosition;
+        const distance = target - start;
+        const startTime = performance.now();
+
+        function step(now) {
+            const elapsed = now - startTime;
+            const t = Math.min(1, elapsed / duration);
+            const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+
+            scrollPosition = start + distance * eased;
+            updateScrollTransform();
+            updateStats();
+            updateScrubber();
+
+            if (t < 1) {
+                lineJumpFrameId = requestAnimationFrame(step);
+            } else {
+                scrollPosition = target;
+                updateScrollTransform();
+                lineJumpFrameId = null;
+            }
+        }
+
+        lineJumpFrameId = requestAnimationFrame(step);
+    }
+
+    // Briefly brightens the eye-line markers to call out the line you just jumped to.
+    let eyeLinePulseTimeoutId = null;
+    function pulseEyeLineMarker() {
+        if (!display.eyeLine) return;
+        clearTimeout(eyeLinePulseTimeoutId);
+        display.eyeLine.classList.add('line-jump-pulse');
+        eyeLinePulseTimeoutId = setTimeout(() => {
+            display.eyeLine.classList.remove('line-jump-pulse');
+        }, 500);
+    }
+
     function scrollLoop(timestamp) {
         if (!isPlaying) return;
 
@@ -1198,13 +1241,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const maxScroll = display.wrapper.scrollHeight - display.container.clientHeight;
                 targetScrollPosition = Math.max(0, Math.min(maxScroll, targetScrollPosition + delta));
 
-                // The rAF loop only runs while playing, so apply the move
-                // immediately when paused instead of waiting for it to glide.
+                pulseEyeLineMarker();
+
+                // The rAF loop only runs while playing, so glide there manually
+                // instead of waiting for it (and instead of an instant snap).
                 if (!isPlaying) {
-                    scrollPosition = targetScrollPosition;
-                    updateScrollTransform();
-                    updateStats();
-                    updateScrubber();
+                    animateScrollTo(targetScrollPosition);
                 }
             }
         }
