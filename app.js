@@ -1188,12 +1188,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 inputs.speed.value = Math.max(1, parseInt(inputs.speed.value) - 5);
                 updateStats();
-            } else if (keyCode === 'ArrowUp') {
+            } else if (keyCode === 'ArrowUp' || keyCode === 'ArrowDown') {
                 e.preventDefault();
-                targetScrollPosition = Math.max(0, targetScrollPosition - 150);
-            } else if (keyCode === 'ArrowDown') {
-                e.preventDefault();
-                targetScrollPosition += 150;
+                const computedLineHeight = parseFloat(getComputedStyle(display.text).lineHeight);
+                const lineHeight = Number.isFinite(computedLineHeight)
+                    ? computedLineHeight
+                    : parseFloat(getComputedStyle(display.text).fontSize) * 1.4;
+                const delta = keyCode === 'ArrowUp' ? -lineHeight : lineHeight;
+                const maxScroll = display.wrapper.scrollHeight - display.container.clientHeight;
+                targetScrollPosition = Math.max(0, Math.min(maxScroll, targetScrollPosition + delta));
+
+                // The rAF loop only runs while playing, so apply the move
+                // immediately when paused instead of waiting for it to glide.
+                if (!isPlaying) {
+                    scrollPosition = targetScrollPosition;
+                    updateScrollTransform();
+                    updateStats();
+                    updateScrubber();
+                }
             }
         }
     });
