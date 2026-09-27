@@ -482,19 +482,33 @@ document.addEventListener('DOMContentLoaded', () => {
     function processPrompterNode(node) {
         if (node.nodeType === Node.TEXT_NODE) {
             const fragment = document.createDocumentFragment();
-            // Split by words while keeping whitespace
-            const parts = node.textContent.split(/(\s+)/);
-            
-            parts.forEach(part => {
-                if (part.trim().length === 0) {
-                    fragment.appendChild(document.createTextNode(part));
-                } else {
-                    const span = document.createElement('span');
-                    span.textContent = part;
-                    span.dataset.clean = part.toLowerCase().replace(/[^\w\s]/g, '');
-                    uiWords.push(span);
-                    fragment.appendChild(span);
-                }
+            // Split out bracketed stage directions, e.g. [JUMPS UP AND DOWN],
+            // from the surrounding spoken text so they can be styled separately
+            // and left out of the word count / voice matching.
+            const segments = node.textContent.split(/(\[[^\]]*\])/);
+
+            segments.forEach(segment => {
+                if (segment === '') return;
+                const isStageDirection = /^\[[^\]]*\]$/.test(segment);
+
+                // Split by words while keeping whitespace
+                const parts = segment.split(/(\s+)/);
+
+                parts.forEach(part => {
+                    if (part.trim().length === 0) {
+                        fragment.appendChild(document.createTextNode(part));
+                    } else {
+                        const span = document.createElement('span');
+                        span.textContent = part;
+                        if (isStageDirection) {
+                            span.classList.add('stage-direction');
+                        } else {
+                            span.dataset.clean = part.toLowerCase().replace(/[^\w\s]/g, '');
+                            uiWords.push(span);
+                        }
+                        fragment.appendChild(span);
+                    }
+                });
             });
             return fragment;
         } else if (node.nodeType === Node.ELEMENT_NODE) {

@@ -726,6 +726,13 @@ h1 {
     transform: scaleX(-1);
 }
 
+.stage-direction {
+    color: var(--accent-color);
+    font-style: italic;
+    font-weight: 600;
+    opacity: 0.75;
+}
+
 /* Floating Controls Layer (Play Mode) */
 .floating-controls {
     position: fixed;
