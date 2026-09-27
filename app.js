@@ -60,7 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
             words: document.getElementById('editor-word-count'),
             estimate: document.getElementById('editor-time-estimate')
         },
-        eyeLine: document.getElementById('eye-line-marker')
+        eyeLine: document.getElementById('eye-line-marker'),
+        countdownOverlay: document.getElementById('countdown-overlay'),
+        countdownNumber: document.getElementById('countdown-number')
     };
 
     // State Variables
@@ -822,7 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStats();
         }, 50);
 
-        setTimeout(startScrolling, 500); // Small delay to let UI settle before auto-starting
+        setTimeout(beginPlaybackWithCountdown, 500); // Small delay to let UI settle before auto-starting
     });
 
     buttons.clearEdit.addEventListener('click', () => {
@@ -952,9 +954,17 @@ document.addEventListener('DOMContentLoaded', () => {
     buttons.playPause.addEventListener('click', () => {
         if (isPlaying) {
             stopScrolling();
+        } else if (countdownActive) {
+            cancelCountdown();
         } else {
-            startScrolling();
+            beginPlaybackWithCountdown();
         }
+    });
+
+    display.countdownOverlay.addEventListener('click', () => {
+        if (!countdownActive) return;
+        cancelCountdown();
+        startScrolling();
     });
 
     buttons.edit.addEventListener('click', () => {
@@ -1205,6 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function stopScrolling() {
+        cancelCountdown();
         if (!isPlaying) return;
         isPlaying = false;
         updatePlayPauseIcons();
@@ -1216,6 +1227,49 @@ document.addEventListener('DOMContentLoaded', () => {
         if (useVoiceScroll && recognition) {
             recognition.stop();
         }
+    }
+
+    // --- Pre-roll Countdown ---
+    const COUNTDOWN_SECONDS = 3;
+    const COUNTDOWN_STEP_MS = 700;
+    let countdownActive = false;
+    let countdownTimeoutId = null;
+
+    function showCountdownNumber(n) {
+        display.countdownNumber.textContent = n;
+        display.countdownNumber.classList.remove('pulse');
+        void display.countdownNumber.offsetWidth; // restart the pulse animation
+        display.countdownNumber.classList.add('pulse');
+    }
+
+    function cancelCountdown() {
+        if (!countdownActive) return;
+        countdownActive = false;
+        clearTimeout(countdownTimeoutId);
+        display.countdownOverlay.classList.remove('active');
+    }
+
+    // Shows a 3-2-1 overlay, then actually starts scrolling. Used everywhere
+    // playback would normally begin, so you're never caught off guard.
+    function beginPlaybackWithCountdown() {
+        if (isPlaying || countdownActive) return;
+        countdownActive = true;
+        display.countdownOverlay.classList.add('active');
+
+        let remaining = COUNTDOWN_SECONDS;
+        showCountdownNumber(remaining);
+
+        countdownTimeoutId = setTimeout(function step() {
+            remaining--;
+            if (remaining <= 0) {
+                countdownActive = false;
+                display.countdownOverlay.classList.remove('active');
+                startScrolling();
+                return;
+            }
+            showCountdownNumber(remaining);
+            countdownTimeoutId = setTimeout(step, COUNTDOWN_STEP_MS);
+        }, COUNTDOWN_STEP_MS);
     }
 
 

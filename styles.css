@@ -733,6 +733,48 @@ h1 {
     opacity: 0.75;
 }
 
+.countdown-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 150;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+}
+
+.countdown-overlay.active {
+    display: flex;
+}
+
+.countdown-number {
+    font-family: var(--font-ui);
+    font-size: 220px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--accent-color);
+    text-shadow: 0 0 60px var(--accent-color);
+}
+
+.countdown-number.pulse {
+    animation: countdownPulse 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes countdownPulse {
+    0% {
+        transform: scale(1.7);
+        opacity: 0;
+    }
+    35% {
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 /* Floating Controls Layer (Play Mode) */
 .floating-controls {
     position: fixed;
